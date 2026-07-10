@@ -329,16 +329,8 @@
                     <div class="calculator-panel reveal is-visible">
                         <div class="panel-heading">
                             <i class="simple-icon-plus" aria-hidden="true"></i>
-                            <div><h2>Deposit</h2><p>Direct VLT + USDC vault deposits</p></div>
+                            <div><h2>Deposit</h2><p>Direct USDC + VLT vault deposits</p></div>
                             <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
-                        </div>
-                        <div class="vt-row">
-                            <label for="dep-vlt">VLT amount <span class="vt-bal" data-token="vlt" data-target="dep-vlt" title="click to use full balance">…</span></label>
-                            <div class="vt-slip-row" style="margin:2px 0 4px;">
-                                <input type="range" id="dep-vlt-slider" min="0" max="100" step="1" value="0" title="VLT as % of your balance">
-                                <span class="vt-hint" data-field="dep-vlt-pct" style="white-space:nowrap">0%</span>
-                            </div>
-                            <input id="dep-vlt" type="text" value="2500" inputmode="decimal">
                         </div>
                         <div class="vt-row">
                             <label for="dep-usdc">USDC amount <span class="vt-bal" data-token="usdc" data-target="dep-usdc" title="click to use full balance">…</span></label>
@@ -347,13 +339,21 @@
                                 <span class="vt-hint" data-field="dep-usdc-pct" style="white-space:nowrap">0%</span>
                             </div>
                             <input id="dep-usdc" type="text" value="5000" inputmode="decimal">
+                        </div>
+                        <div class="vt-row">
+                            <label for="dep-vlt">VLT amount <span class="vt-bal" data-token="vlt" data-target="dep-vlt" title="click to use full balance">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="dep-vlt-slider" min="0" max="100" step="1" value="0" title="VLT as % of your balance">
+                                <span class="vt-hint" data-field="dep-vlt-pct" style="white-space:nowrap">0%</span>
+                            </div>
+                            <input id="dep-vlt" type="text" value="2500" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="dep-out"></span></div>
                         </div>
                         <input type="hidden" id="dep-minshares" value="0">
                         <div class="vt-actions">
                             <button class="button primary" id="dep-go" type="button" disabled>Deposit</button>
-                            <button class="button ghost" id="dep-approve-vlt-p" type="button" disabled>Approve VLT</button>
                             <button class="button ghost" id="dep-approve-usdc-p" type="button" disabled>Approve USDC</button>
+                            <button class="button ghost" id="dep-approve-vlt-p" type="button" disabled>Approve VLT</button>
                         </div>
                         <p class="calc-note" data-field="dep-note">&nbsp;</p>
                     </div>

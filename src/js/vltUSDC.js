@@ -251,8 +251,9 @@
       try {
         if (toBN(supply).gtn(0)) {
           var pv = await v.previewRedeem(supply).call();
-          var pUsdcRaw = usdc0 ? (pv.amount0 || pv[0]) : (pv.amount1 || pv[1]);
-          var pVltRaw = usdc0 ? (pv.amount1 || pv[1]) : (pv.amount0 || pv[0]);
+          // previewRedeem returns token-named (vltAmount, usdcAmount) — no currency-order mapping.
+          var pVltRaw = pv.vltAmount || pv[0];
+          var pUsdcRaw = pv.usdcAmount || pv[1];
           var posUsd = Number(formatUnits(String(pUsdcRaw), state.tokens.usdcDec)) +
             Number(formatUnits(String(pVltRaw), state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
           state.navPerShareUsdc = posUsd / Number(supply);
@@ -293,9 +294,8 @@
         try {
           if (toBN(state.bal.shares).gtn(0)) {
             var pv = await state.read.vault.methods.previewRedeem(state.bal.shares).call();
-            var u0 = state.tokens.usdcIsCurrency0;
-            state.bal.sharesUsdc = String(u0 ? (pv.amount0 || pv[0]) : (pv.amount1 || pv[1]));
-            state.bal.sharesVlt = String(u0 ? (pv.amount1 || pv[1]) : (pv.amount0 || pv[0]));
+            state.bal.sharesVlt = String(pv.vltAmount || pv[0]);
+            state.bal.sharesUsdc = String(pv.usdcAmount || pv[1]);
           }
         } catch (e) { /* leave null → the breakdown line hides */ }
       }
@@ -567,7 +567,7 @@
   }
   var _zapTimer;
   function refreshZapQuoteDebounced() { clearTimeout(_zapTimer); _zapTimer = setTimeout(refreshZapQuote, 450); }
-  async function refreshZapQuote() {
+  async function refreshZapQuote(depth) {
     var seq = ++state.zapSeq;
     var usdcDec = state.tokens.usdcDec, vltDec = state.tokens.vltDec;
     var totalRaw, swapRaw;
@@ -616,7 +616,25 @@
       var z = state.write.zap.methods;
       var expVlt = String(await z.zap(state.tokens.usdc, state.tokens.vlt, swapRaw, "0", state.account, swapData).call({ from: state.account }));
       if (seq !== state.zapSeq) return;
-      var expShares = String(await z.zapDeposit(totalRaw, swapRaw, "0", "0", txDeadline(), swapData).call({ from: state.account }));
+      // Refine the split for the price gap between the external route and the vault's own pool.
+      // fillZapSwap()'s seed assumes both trade at ~the same price, but the vault refunds whatever
+      // the bought VLT is worth ABOVE the kept USDC at ITS pool price — any gap (large on an
+      // un-arbed fork, small on mainnet) comes straight back to the caller as VLT dust instead of
+      // being deployed. Balanced when swap·r·p = total − swap → swap = total / (1 + r·p), with
+      // r = the route's realized VLT-per-USDC (measured by the preview above, impact included)
+      // and p = the vault pool's USDC-per-VLT. Re-quote at the refined split (≤2 passes).
+      var pPool = state.priceUsdcPerVlt || 0;
+      var swapHuman = Number(formatUnits(swapRaw, usdcDec));
+      var rRoute = swapHuman > 0 ? Number(formatUnits(expVlt, vltDec)) / swapHuman : 0;
+      if (pPool > 0 && rRoute > 0 && (depth || 0) < 2) {
+        var totalHuman = Number(formatUnits(totalRaw, usdcDec));
+        var idealSwap = totalHuman / (1 + rRoute * pPool);
+        if (Math.abs(idealSwap - swapHuman) / totalHuman > 0.005) {
+          $("#zap-swap").val(idealSwap.toFixed(usdcDec));
+          return refreshZapQuote((depth || 0) + 1);
+        }
+      }
+      var expShares = String(await z.zapDeposit(totalRaw, swapRaw, "0", "0", await txDeadline(), state.account, swapData).call({ from: state.account }));
       if (seq !== state.zapSeq) return;
       var minVlt = withSlippage(expVlt), minShares = withSlippage(expShares);
       $("#zap-minvlt").val(formatUnits(minVlt, vltDec, vltDec));
@@ -782,7 +800,7 @@
       if (toBN(vltRaw).lten(0) || toBN(usdcRaw).lten(0)) { $("#dep-minshares").val("0"); setField("dep-out", ""); return; }
       var shares;
       if (APPROVALS[0].on && APPROVALS[1].on) {
-        shares = String(await state.write.vault.methods.deposit(vltRaw, usdcRaw, "0", txDeadline()).call({ from: state.account }));
+        shares = String(await state.write.vault.methods.deposit(vltRaw, usdcRaw, "0", await txDeadline(), state.account).call({ from: state.account }));
       } else {
         // Balanced portion only — the vault refunds the excess side, so value deployed = 2·min(sides).
         var p = state.priceUsdcPerVlt || 0;
@@ -833,9 +851,13 @@
   }
   // deposit()/zapDeposit() take a deadline (stale-tx guard): 30 minutes from "now" covers any
   // realistic confirmation wait; a tx that lingers past it reverts "expired" instead of executing
-  // under moved market terms. Hoisted function — also used by the preview static-calls above.
-  function txDeadline() {
-    return String(Math.floor(Date.now() / 1000) + 1800);
+  // under moved market terms. "Now" is CHAIN time, read just-in-time: the contract checks
+  // block.timestamp, and on a time-jumped fork (evm_increaseTime) the wall clock sits days in
+  // the chain's past — on mainnet the two agree to ~seconds, so this costs one cheap read per
+  // action. Hoisted function — also used by the preview static-calls above.
+  async function txDeadline() {
+    var blk = await state.readWeb3.eth.getBlock("latest");
+    return String(Number(blk.timestamp) + 1800);
   }
   async function doDeposit() {
     try {
@@ -845,7 +867,7 @@
       var minShares = parseUnits($("#dep-minshares").val(), state.tokens.sharesDec);
       // No auto-approve — approve VLT + USDC to the vault via the Approve buttons first.
       await runTx("deposit(" + $("#dep-vlt").val() + " VLT, " + $("#dep-usdc").val() + " USDC)",
-        state.write.vault.methods.deposit(vltRaw, usdcRaw, minShares, txDeadline()).send({ from: state.account }));
+        state.write.vault.methods.deposit(vltRaw, usdcRaw, minShares, await txDeadline(), state.account).send({ from: state.account }));
     } catch (e) { note("dep-note", errText(e), "vt-warn"); }
   }
   async function doZapDeposit() {
@@ -861,7 +883,7 @@
       var swapData = (await getZapSwapData(swapRaw)).data;
       // No auto-approve — approve USDC to the ZapHelper via the Approve button first.
       await runTx("zapDeposit(" + $("#zap-usdc").val() + " USDC, swap " + $("#zap-swap").val() + ")",
-        state.write.zap.methods.zapDeposit(totalRaw, swapRaw, minVlt, minShares, txDeadline(), swapData).send({ from: state.account }));
+        state.write.zap.methods.zapDeposit(totalRaw, swapRaw, minVlt, minShares, await txDeadline(), state.account, swapData).send({ from: state.account }));
     } catch (e) { note("zap-note", errText(e), "vt-warn"); }
   }
   var _redTimer;
@@ -900,14 +922,11 @@
       // Pure view — no wallet, no approval, no staticCall. Returns the in-kind principal at the
       // current price. Display-only: redeem() takes no min bounds (in-kind, can't be sandwiched).
       var r = await state.read.vault.methods.previewRedeem(sharesRaw).call();
-      var a0 = String(r.amount0 || r[0]), a1 = String(r.amount1 || r[1]);
-      var u0 = state.tokens.usdcIsCurrency0;
-      var dec0 = u0 ? state.tokens.usdcDec : state.tokens.vltDec, sym0 = u0 ? "USDC" : "VLT";
-      var dec1 = u0 ? state.tokens.vltDec : state.tokens.usdcDec, sym1 = u0 ? "VLT" : "USDC";
+      // Token-named returns (vltAmount, usdcAmount) — no currency-order mapping needed.
+      var vltRaw = String(r.vltAmount || r[0]), usdcRaw = String(r.usdcAmount || r[1]);
       // USD value of the in-kind output (USDC side at par + VLT side at the live pool price).
-      var usdcRaw = u0 ? a0 : a1, vltRaw = u0 ? a1 : a0;
       var usd = Number(formatUnits(usdcRaw, state.tokens.usdcDec)) + Number(formatUnits(vltRaw, state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
-      setField("red-out", formatUnits(a0, dec0, 6) + " " + sym0 + " + " + formatUnits(a1, dec1, 6) + " " + sym1 + " ≈ $" + usd.toFixed(2));
+      setField("red-out", formatUnits(vltRaw, state.tokens.vltDec, 6) + " VLT + " + formatUnits(usdcRaw, state.tokens.usdcDec, 6) + " USDC ≈ $" + usd.toFixed(2));
       renderRedeemReadout();
       note("red-note", " ");
     } catch (e) { note("red-note", errText(e), "vt-warn"); }
@@ -916,9 +935,9 @@
     try {
       requireConnected();
       var sharesRaw = parseUnits($("#red-shares").val(), state.tokens.sharesDec);
-      // Shares-only: redeem is in-kind, no slippage bound (can't be sandwiched for value).
+      // In-kind, no slippage bound (can't be sandwiched for value); pays out to the connected wallet.
       await runTx("redeem(" + $("#red-shares").val() + " shares)",
-        state.write.vault.methods.redeem(sharesRaw).send({ from: state.account }));
+        state.write.vault.methods.redeem(sharesRaw, state.account).send({ from: state.account }));
     } catch (e) { note("red-note", errText(e), "vt-warn"); }
   }
   async function doCompound() {
@@ -942,10 +961,9 @@
     if (!state.read.vault) return;
     try {
       var c = await state.read.vault.methods.compoundClaimable().call();
-      var amount0 = c.amount0 || c[0], amount1 = c.amount1 || c[1];
+      // Token-named returns (vltAmount, usdcAmount, ...) — no currency-order mapping needed.
+      var vltRaw = c.vltAmount || c[0], usdcRaw = c.usdcAmount || c[1];
       var valueUsdc = c.valueUsdc || c[2], feesUsdc = c.feesValueUsdc || c[3];
-      var vltRaw = state.tokens.usdcIsCurrency0 ? amount1 : amount0;
-      var usdcRaw = state.tokens.usdcIsCurrency0 ? amount0 : amount1;
       var min = await state.read.vault.methods.MIN_COMPOUND_VALUE_USDC().call();
       setField("cmp-vlt", formatUnits(vltRaw, state.tokens.vltDec, 6));
       setField("cmp-usdc", formatUnits(usdcRaw, state.tokens.usdcDec, 4));

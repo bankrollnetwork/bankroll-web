@@ -1,9 +1,9 @@
 // AUTO-GENERATED ABI globals for the vault test client (src/vltUSDC.html).
-// Source: src/contracts/artifacts/contracts/{VltUsdcVault,ZapHelper}.sol/*.json (gitignored).
-// Regenerate after any contract ABI change: cd src/contracts && npx hardhat compile, then run the
-// node generator (see git history / the command used in this commit). ERC20_ABI is extracted from
-// the vault's own canonical ERC20 fragments (USDC/VLT share these signatures) — do NOT hand-write
-// bare {type:...} params, web3 1.10's decoder needs the full {name,type} structure.
+// Source: the sibling bankroll-contracts repo's Hardhat artifacts for {VltUsdcVault,ZapHelper}.sol.
+// Regenerate after any contract ABI change: in bankroll-contracts run `npx hardhat compile`,
+// then in this repo run `node tools/gen-vault-abi.js`. Do NOT hand-edit: web3 1.10's decoder
+// needs the full {name,type} param structure. ERC20_ABI is extracted from the vault's own
+// canonical ERC20 fragments (USDC/VLT share these signatures).
 
 var VAULT_ABI = [
   {
@@ -193,25 +193,25 @@ var VAULT_ABI = [
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "fee0",
+        "name": "vltFees",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "fee1",
+        "name": "usdcFees",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "finder0",
+        "name": "vltFinder",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "finder1",
+        "name": "usdcFinder",
         "type": "uint256"
       },
       {
@@ -228,40 +228,27 @@ var VAULT_ABI = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "fee0",
-        "type": "uint256"
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
       },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "fee1",
-        "type": "uint256"
-      }
-    ],
-    "name": "FeesRetained",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
       {
         "indexed": true,
         "internalType": "address",
-        "name": "user",
+        "name": "recipient",
         "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "vltIn",
+        "name": "vltUsed",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "usdcIn",
+        "name": "usdcUsed",
         "type": "uint256"
       },
       {
@@ -284,9 +271,34 @@ var VAULT_ABI = [
     "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "vltFees",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "usdcFees",
+        "type": "uint256"
+      }
+    ],
+    "name": "FeesRetained",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": true,
         "internalType": "address",
-        "name": "user",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
         "type": "address"
       },
       {
@@ -298,13 +310,13 @@ var VAULT_ABI = [
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amount0Out",
+        "name": "vltOut",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "amount1Out",
+        "name": "usdcOut",
         "type": "uint256"
       }
     ],
@@ -357,92 +369,6 @@ var VAULT_ABI = [
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "inceptionTime",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "feeApr",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "lifetimeBps",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "d7Bps",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "d30Bps",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "feeHistory",
-    "outputs": [
-      {
-        "internalType": "uint32",
-        "name": "timestamp",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint224",
-        "name": "perShareWad",
-        "type": "uint224"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "lastSnapshotDay",
-    "outputs": [
-      {
-        "internalType": "uint32",
-        "name": "",
-        "type": "uint32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "feeHistoryHead",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -534,12 +460,12 @@ var VAULT_ABI = [
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "amount0",
+        "name": "vltAmount",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "amount1",
+        "name": "usdcAmount",
         "type": "uint256"
       },
       {
@@ -592,7 +518,7 @@ var VAULT_ABI = [
         "type": "uint8"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -616,6 +542,11 @@ var VAULT_ABI = [
         "internalType": "uint256",
         "name": "deadline",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
       }
     ],
     "name": "deposit",
@@ -627,6 +558,92 @@ var VAULT_ABI = [
       }
     ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "feeApr",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "lifetimeBps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "d7Bps",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "d30Bps",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "feeHistory",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "timestamp",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint224",
+        "name": "perShareWad",
+        "type": "uint224"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "feeHistoryHead",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "inceptionTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lastSnapshotDay",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -713,12 +730,12 @@ var VAULT_ABI = [
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "amount0",
+        "name": "vltAmount",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "amount1",
+        "name": "usdcAmount",
         "type": "uint256"
       }
     ],
@@ -731,18 +748,23 @@ var VAULT_ABI = [
         "internalType": "uint256",
         "name": "shares",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
       }
     ],
     "name": "redeem",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "amount0",
+        "name": "vltOut",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "amount1",
+        "name": "usdcOut",
         "type": "uint256"
       }
     ],
@@ -1089,6 +1111,11 @@ var ZAPHELPER_ABI = [
         "type": "uint256"
       },
       {
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
         "internalType": "bytes",
         "name": "swapData",
         "type": "bytes"
@@ -1185,7 +1212,7 @@ var ERC20_ABI = [
         "type": "uint8"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
