@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="robots" content="noindex, nofollow"/>
+    <title>vltUSDC</title>
+
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="128x128" href="img/logo/vlt-128.png">
+    <link rel="apple-touch-icon" sizes="200x200" href="img/logo/vlt-200.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="font/simple-line-icons/css/simple-line-icons.css"/>
+    <link rel="stylesheet" href="css/vlt-landing.css?v=20260519a"/>
+
+    <!-- Dev-tool affordances only. Structure/look comes from vlt-landing.css; this just
+         covers buttons/inputs/log/grid so the page is usable regardless of theme coverage. -->
+    <style>
+        .vt-grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
+        /* "Your Stats" title sits as a full-width header row above the cards; the cards form a 3-wide
+           grid that collapses 3→2→1 with the theme's breakpoints. */
+        .calculator-status { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .vt-stats-title { grid-column: 1 / -1; display: flex; align-items: center;
+            font-weight: 800; font-size: 0.9rem; opacity: 0.9; padding-bottom: 2px; }
+        /* Approx USD equivalent under a status card's value (VLT / shares); hidden when empty. */
+        /* Sub-lines under a status card's value (the underlying VLT|USDC breakdown and the ≈$) — same styling. */
+        .status-card .sc-usd, .status-card .sc-sub { display: block; margin-top: 3px; font-size: 0.85rem; color: var(--white); opacity: 0.7; }
+        .status-card .sc-usd:empty, .status-card .sc-sub:empty { display: none; }
+        @media (max-width: 1040px) { .calculator-status { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 760px)  { .calculator-status { grid-template-columns: 1fr; } }
+        /* Tab control consolidating the panels (panes populated by setupTabs()). */
+        .vt-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 24px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+        .vt-tab { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; font-size: 0.9rem; opacity: 0.55;
+            cursor: pointer; padding: 10px 16px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .vt-tab:hover { opacity: 0.85; }
+        .vt-tab.active { opacity: 1; border-bottom-color: var(--white); }
+        .vt-tab-content { margin-top: 18px; }
+        .vt-tab-pane { display: none; }
+        .vt-tab-pane.active { display: block; }
+        .vt-tab-pane > .calculator-panel { margin-bottom: 18px; }
+        .vt-tab-pane > .calculator-panel:last-child { margin-bottom: 0; }
+        /* Modal tab control (Settings dialog: Slippage | Approvals). Distinct classes from .vt-tab so the
+           page-level setupTabs() click wiring never touches them. Mirrors the .vt-tab look. */
+        .vt-mtabs { display: flex; gap: 4px; margin: 0 0 16px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+        .vt-mtab { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; font-size: 0.85rem; opacity: 0.55;
+            cursor: pointer; padding: 8px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .vt-mtab:hover { opacity: 0.85; }
+        .vt-mtab.active { opacity: 1; border-bottom-color: var(--white); }
+        .vt-mpane { display: none; }
+        .vt-mpane.active { display: block; }
+        /* Approvals tab rows: description on the left, the approve/unapprove toggle on the right. */
+        .vt-approval-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .vt-approval-row:last-child { border-bottom: 0; }
+        .vt-approval-label strong { display: block; font-size: 0.9rem; }
+        .vt-approval-label span { display: block; font-size: 0.78rem; opacity: 0.6; margin-top: 2px; }
+        /* "Connect to get started" gate — shown until a wallet connects, then #app reveals. */
+        .vt-gate { padding: 36px 0 72px; }
+        .vt-gate-card { max-width: 460px; margin: 0 auto; text-align: center;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 40px 28px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+            box-shadow: var(--shadow); }
+        .vt-gate-card .vt-gate-icon { font-size: 2rem; opacity: 0.55; line-height: 1; }
+        .vt-gate-card h2 { margin: 14px 0 8px; }
+        .vt-gate-card p { opacity: 0.72; margin: 0 0 22px; }
+        .vt-gate-card .button { min-width: 190px; }
+        .vt-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+        .vt-row label { font-weight: 700; font-size: 0.85rem; opacity: 0.85; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .vt-row input, .vt-row select {
+            width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.04); color: inherit; font: inherit;
+        }
+        .vt-row input[readonly] { opacity: 0.6; }
+        /* "you receive ≈ <value>" — right-aligned under the input, only rendered when there's data. */
+        .vt-recv { text-align: right; font-size: 0.85rem; margin-top: 6px; }
+        .vt-recv > span:first-child { font-weight: 700; opacity: 0.85; }
+        .vt-recv > span[data-field] { opacity: 0.7; }
+        .vt-recv:has([data-field]:empty) { display: none; }
+        /* Clickable "balance: X (max)" chip sitting on the right of an input's label. */
+        /* Match the "you receive" estimate value (.vt-recv [data-field]): same 0.85rem, white text, and
+           effective 0.7 opacity. The chip sits inside a .vt-row label (opacity 0.85 + mauve color), so we
+           override the color to white and set 0.82 opacity (0.82 × 0.85 ≈ 0.70) to escape the label's dim. */
+        .vt-bal { font-weight: 400; font-size: 0.85rem; opacity: 0.82; color: var(--white); cursor: pointer; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+        .vt-bal:hover { opacity: 1; text-decoration: underline; }
+        .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
+        .vt-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; font-size: 0.85rem; opacity: 0.9; cursor: pointer; }
+        .vt-check input { width: auto; margin: 0; }
+        /* Zap route is a key/value table with the SAME styling as the compound stats (.vt-kv): it
+           inherits the panel font, tabular-nums, key/value opacity and row borders — no overrides
+           except cleaner wrapping for the one long text value (the route path). + a status note. */
+        .vt-route { margin-top: 12px; }
+        .vt-route .vt-kv strong { word-break: normal; overflow-wrap: anywhere; }
+        .vt-route-note { margin-top: 8px; font-size: 0.8rem; opacity: 0.7; }
+        .vt-route-note.vt-warn { opacity: 1; }
+        /* settings gear in a panel heading */
+        /* Normalized per-panel refresh button (top-right of the panel heading). Uses an inline SVG
+           (not an icon-font glyph) so the icon rotates perfectly in place — a font glyph sits off-
+           center in its line box, which made the spin look off-center / like the whole button turned. */
+        .vt-refresh { margin-left: auto; display: inline-flex; align-items: center; justify-content: center;
+            background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.5; line-height: 1; padding: 4px; }
+        .vt-refresh:hover { opacity: 1; }
+        .vt-refresh svg { display: block; width: 1.05rem; height: 1.05rem; transform-origin: 50% 50%; }
+        .vt-refresh svg.spin { animation: vt-spin 0.6s linear infinite; }
+        @keyframes vt-spin { to { transform: rotate(360deg); } }
+        /* Right-aligned cluster of heading icon-buttons (slippage gear + refresh). The wrapper owns the
+           auto-margin so the two buttons sit adjacent — otherwise each .vt-refresh grabs it separately. */
+        .vt-head-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; }
+        .vt-head-actions .vt-refresh { margin-left: 0; }
+        .vt-label-right { display: inline-flex; align-items: center; gap: 8px; }
+        /* slippage modal slider row */
+        .vt-slip-row { display: flex; align-items: center; gap: 14px; }
+        /* Themed range slider: track = input-field background, thumb = card background. */
+        .vt-slip-row input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; border: 0; padding: 0; }
+        /* Filled (selected) = input-field bg; remaining (unselected) = grey border color. The fill
+           split is driven by --fill (set per-value in JS) for webkit; Firefox uses range-progress. */
+        .vt-slip-row input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: linear-gradient(to right, rgba(255,255,255,0.04) var(--fill,0%), rgba(255,255,255,0.18) var(--fill,0%)); }
+        .vt-slip-row input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.18); }
+        .vt-slip-row input[type=range]::-moz-range-progress { height: 6px; border-radius: 6px; background: rgba(255,255,255,0.04); }
+        .vt-slip-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--paper-2); border: 1px solid rgba(255,255,255,0.3); margin-top: -6px; box-shadow: var(--shadow); }
+        .vt-slip-row input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--paper-2); border: 1px solid rgba(255,255,255,0.3); box-shadow: var(--shadow); }
+        .vt-slip-row .vt-slip-num { width: 96px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); color: inherit; font: inherit; }
+        .vt-slip-presets { display: flex; gap: 8px; margin-top: 14px; }
+        /* Lay a panel's inputs out in responsive columns (full-row panel, columnar fields). */
+        .vt-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 18px; align-items: end; }
+        .vt-fields .vt-row { margin-bottom: 0; }
+        .vt-field { display: flex; flex-direction: column; gap: 8px; }
+        .vt-field .vt-row { margin-bottom: 0; }
+        .vt-field .button { width: 100%; justify-content: center; }
+        /* Buttons use the theme's .button/.primary/.ghost classes (from vlt-landing.css). */
+        .vt-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .button[disabled], .button:disabled, .button.disabled { opacity: 0.5; cursor: not-allowed; }
+        /* Inside panels, a disabled button is hidden outright — this drives the approve↔action swap: an
+           in-panel approve button disables (hides) once its allowance is granted, and the action button
+           stays disabled (hidden) until every required approval is done. Scoped to panels so the header
+           #connect-wallet and the always-visible Settings dialog buttons keep their greyed state. */
+        .calculator-panel .button:disabled,
+        .calculator-panel .button[disabled],
+        .calculator-panel .button.disabled { display: none; }
+        /* Collapse an actions row whose buttons are ALL hidden (e.g. before approvals render) so it leaves
+           no gap. Scoped to rows that hold buttons, so checkbox-only .vt-actions are unaffected. */
+        .vt-actions:has(> .button):not(:has(> .button:not(:disabled))) { display: none; }
+        .vt-kv { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .vt-kv span { opacity: 0.7; }
+        .vt-kv strong { font-variant-numeric: tabular-nums; word-break: break-all; text-align: right; }
+        /* Stats panel: lay metrics out as cards with the value UNDER the title (like the Your Stats
+           cards), not the flat label-left / value-right rows. Same fonts — only layout + card chrome. */
+        .vt-cards .vt-kv { display: block; min-height: 0; padding: 16px; border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius); background: rgba(23, 9, 24, 0.72); }
+        .vt-cards .vt-kv strong { text-align: left; word-break: normal; overflow-wrap: anywhere; }
+        #txlog { max-height: 360px; overflow: auto; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.8rem; line-height: 1.4; }
+        #txlog .ok { color: rgba(255, 255, 255, 0.7); }
+        #txlog .err { color: #ff7675; }
+        #txlog .pending { color: #ffeaa7; }
+        #txlog .entry { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: pre-wrap; word-break: break-all; }
+        .vt-warn { color: #ffeaa7; }
+
+        /* Minimal Bootstrap-4 modal styling — vlt-landing.css doesn't ship it, so without this
+           the .modal blocks render inline + always-visible. Bootstrap's JS toggles display
+           inline on show/hide; these rules give the hidden default + overlay look. */
+        /* Colors use the theme tokens (var(--paper-*) / theme border rgba(219,210,219,…)). */
+        .modal { display: none; position: fixed; inset: 0; z-index: 1050; overflow-y: auto; background: rgba(20, 6, 21, 0.7); }
+        .modal.show { display: block; }
+        .modal-backdrop { display: none; } /* dimming comes from .modal's own background */
+        .modal-dialog { max-width: 460px; margin: 8vh auto; padding: 0 16px; }
+        .modal-content { background: var(--paper-2); border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid rgba(219, 210, 219, 0.16); }
+        .modal-title { margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--white); }
+        .modal-body { padding: 18px; }
+        .modal-footer { padding: 12px 18px; border-top: 1px solid rgba(219, 210, 219, 0.16); text-align: right; }
+        .modal .close { background: none; border: 0; color: var(--paper-6); font-size: 1.5rem; line-height: 1; cursor: pointer; opacity: 0.8; }
+        .modal .close:hover { opacity: 1; }
+        /* connectEthWallet builds the picker rows with .btn classes (Bootstrap CSS absent) */
+        .modal-body .btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; margin-bottom: 8px; border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius); color: var(--white); text-decoration: none; cursor: pointer; }
+        .modal-body .btn:hover { background: rgba(219, 210, 219, 0.08); border-color: rgba(219, 210, 219, 0.34); }
+        .modal-footer .btn { display: inline-block; padding: 8px 16px; border: 1px solid rgba(219, 210, 219, 0.2); border-radius: 999px; color: var(--white); cursor: pointer; }
+        /* Tx result / error modal (#txModal) */
+        .modal-title.tx-ok { color: #55efc4; }
+        .modal-title.tx-err { color: #ff7675; }
+        .tx-kv { font-size: .85rem; margin: 0 0 10px; }
+        .tx-kv b { opacity: .6; font-weight: 600; }
+        .tx-mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem; word-break: break-all;
+            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 8px 10px; }
+        .tx-err-detail { max-height: 220px; overflow: auto; white-space: pre-wrap; }
+        .tx-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+        .tx-actions a, .tx-actions button { font-size: .82rem; }
+    </style>
+</head>
+
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <nav class="nav-shell" aria-label="Primary navigation">
+            <a class="brand" href="/index.html" aria-label="Bankroll Vault home">
+                <img src="img/logo/LogoWhiteText.png" alt="Bankroll">
+                <span class="brand-token">VLT</span>
+            </a>
+            <a id="connect-wallet" class="button primary" href="javascript:void(0)">CONNECT</a>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="subpage-hero" id="top">
+            <div class="subpage-inner">
+                <div class="subpage-copy reveal is-visible">
+                    <p class="eyebrow">Uniswap V4 liquidity vault</p>
+                    <h1>vltUSDC</h1>
+                    <p class="lead">Auto-compounding VLT/USDC liquidity on Uniswap V4. Deposit both tokens — or zap in with USDC alone — to mint vltUSDC and earn trading fees, reinvested into your position automatically so your shares keep growing while you hold.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Connect gate: everything below the hero stays hidden until a wallet connects -->
+        <section class="vt-gate" id="vt-gate">
+            <div class="wrap">
+                <div class="vt-gate-card reveal is-visible">
+                    <i class="simple-icon-wallet vt-gate-icon" aria-hidden="true"></i>
+                    <h2>Connect to Get Started</h2>
+                    <p>Connect a wallet on your fork network to load the vault dashboard and drive every flow.</p>
+                    <a id="gate-connect" class="button primary" href="javascript:void(0)">Connect Wallet</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-section" id="app" style="display:none">
+            <div class="wrap">
+
+                <!-- Status header -->
+                <div class="calculator-status reveal is-visible" aria-live="polite">
+                    <div class="vt-stats-title">Your Stats<span class="vt-head-actions"><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="ys-refresh" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span></div>
+                    <div class="status-card"><span>Network</span><strong data-field="net">-</strong></div>
+                    <div class="status-card"><span>Account</span><strong data-field="account">not connected</strong></div>
+                    <div class="status-card"><span>ETH</span><strong data-field="eth">-</strong><small class="sc-usd" data-field="eth-usd"></small></div>
+                    <div class="status-card"><span>USDC</span><strong data-field="usdc">-</strong></div>
+                    <div class="status-card"><span>VLT</span><strong data-field="vlt">-</strong><small class="sc-usd" data-field="vlt-usd"></small></div>
+                    <div class="status-card"><span>vltUSDC</span><strong data-field="shares">-</strong><small class="sc-sub" data-field="shares-parts"></small><small class="sc-usd" data-field="shares-usd"></small></div>
+                </div>
+
+                <!-- Tab control. Panels below are moved into these panes by setupTabs() on load. -->
+                <nav class="vt-tabs" id="vt-tabs">
+                    <button type="button" class="vt-tab" data-tab="stats">Stats</button>
+                    <button type="button" class="vt-tab" data-tab="swap">Swap</button>
+                    <button type="button" class="vt-tab" data-tab="deposit">Deposit</button>
+                    <button type="button" class="vt-tab" data-tab="compound">Compound</button>
+                    <button type="button" class="vt-tab" data-tab="config">Config</button>
+                </nav>
+                <div class="vt-tab-content">
+                    <div class="vt-tab-pane" id="pane-stats"></div>
+                    <div class="vt-tab-pane" id="pane-swap"></div>
+                    <div class="vt-tab-pane" id="pane-deposit"></div>
+                    <div class="vt-tab-pane" id="pane-compound"></div>
+                    <div class="vt-tab-pane" id="pane-config"></div>
+                </div>
+
+                <div class="vt-grid" style="margin-top: 24px;">
+
+                    <!-- Config -->
+                    <form class="calculator-panel reveal is-visible" onsubmit="return false">
+                        <div class="panel-heading">
+                            <i class="simple-icon-settings" aria-hidden="true"></i>
+                            <div><h2>Configuration</h2><p>Paste the deploy-script output. Persisted to localStorage.</p></div>
+                        </div>
+                        <div class="vt-actions" style="margin-top:0;margin-bottom:14px;"><label class="vt-check"><input type="checkbox" id="cfg-routing-api" checked> Build the zap route with the Uniswap SDK (in-browser) <span class="vt-hint">(else built-in USDC→WETH→VLT)</span></label></div>
+                        <div class="vt-fields">
+                            <div class="vt-row"><label for="cfg-rpc">RPC URL</label><input id="cfg-rpc" type="text" value="http://127.0.0.1:8545"></div>
+                            <div class="vt-row"><label for="cfg-vault">Vault address</label><input id="cfg-vault" type="text" placeholder="0x… (from 01_deploy_vault.js)"></div>
+                            <div class="vt-row"><label for="cfg-zap">ZapHelper address</label><input id="cfg-zap" type="text" placeholder="0x… (from deploy_zaphelper.js)"></div>
+                        </div>
+                        <div class="vt-actions">
+                            <button class="button primary" id="cfg-save" type="button">Save &amp; Reload</button>
+                        </div>
+                        <div class="result-grid" style="margin-top: 14px;">
+                            <div class="vt-kv"><span>USDC</span><strong data-field="d-usdc">-</strong></div>
+                            <div class="vt-kv"><span>VLT</span><strong data-field="d-vlt">-</strong></div>
+                            <div class="vt-kv"><span>Router</span><strong data-field="d-router">-</strong></div>
+                            <div class="vt-kv"><span>Permit2</span><strong data-field="d-permit2">-</strong></div>
+                            <div class="vt-kv"><span>usdcIsCurrency0</span><strong data-field="d-usdc0">-</strong></div>
+                            <div class="vt-kv"><span>fee / tickSpacing</span><strong data-field="d-feespacing">-</strong></div>
+                        </div>
+                    </form>
+
+                    <!-- Vault state -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-graph" aria-hidden="true"></i>
+                            <div><h2>Vault Stats</h2><p>Supply and performance metrics</p></div>
+                            <button type="button" id="vs-refresh" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+                        </div>
+                        <div class="result-grid vt-cards">
+                            <div class="vt-kv"><span>TVL</span><strong data-field="vs-tvl">-</strong></div>
+                            <div class="vt-kv"><span>Pool</span><strong data-field="vs-pool">-</strong></div>
+                            <div class="vt-kv"><span>positionLiquidity (L)</span><strong data-field="vs-liq">-</strong></div>
+                            <div class="vt-kv"><span>totalSupply (vltUSDC)</span><strong data-field="vs-supply">-</strong></div>
+                            <div class="vt-kv"><span>L per share</span><strong data-field="vs-pershare">-</strong></div>
+                            <div class="vt-kv"><span>lifetime fee growth</span><strong data-field="vs-feegrowth">-</strong></div>
+                            <div class="vt-kv"><span>7d APR</span><strong data-field="vs-apr7">-</strong></div>
+                            <div class="vt-kv"><span>30d APR</span><strong data-field="vs-apr30">-</strong></div>
+                        </div>
+                        <p class="calc-note">L per share is liquidity-denominated, not USD.</p>
+                    </div>
+
+                    <!-- Fund (fork cheats) -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-wallet" aria-hidden="true"></i>
+                            <div><h2>Fund (fork cheats)</h2><p>Via the RPC provider — not the wallet. Hardhat only.</p></div>
+                        </div>
+                        <div class="vt-fields">
+                            <div class="vt-field">
+                                <div class="vt-row"><label for="fund-eth">Set ETH balance</label><input id="fund-eth" type="text" value="100"></div>
+                                <button class="button primary" id="fund-eth-go" type="button">Set ETH</button>
+                            </div>
+                            <div class="vt-field">
+                                <div class="vt-row"><label for="fund-usdc">Set USDC balance</label><input id="fund-usdc" type="text" value="50000"></div>
+                                <button class="button primary" id="fund-usdc-go" type="button">Set USDC</button>
+                            </div>
+                            <div class="vt-field">
+                                <div class="vt-row"><label for="fund-vlt">Get VLT (spend USDC via zap)</label><input id="fund-vlt" type="text" value="5000"></div>
+                                <button class="button primary" id="fund-vlt-go" type="button" disabled>Buy VLT</button>
+                            </div>
+                        </div>
+                        <p class="calc-note" data-field="fund-note">USDC uses setStorageAt (slot 9). VLT has no slot — bought via the zap route.</p>
+                    </div>
+
+                    <!-- Deposit -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-plus" aria-hidden="true"></i>
+                            <div><h2>Deposit</h2><p>Direct VLT + USDC vault deposits</p></div>
+                            <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+                        </div>
+                        <div class="vt-row">
+                            <label for="dep-vlt">VLT amount <span class="vt-bal" data-token="vlt" data-target="dep-vlt" title="click to use full balance">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="dep-vlt-slider" min="0" max="100" step="1" value="0" title="VLT as % of your balance">
+                                <span class="vt-hint" data-field="dep-vlt-pct" style="white-space:nowrap">0%</span>
+                            </div>
+                            <input id="dep-vlt" type="text" value="2500" inputmode="decimal">
+                        </div>
+                        <div class="vt-row">
+                            <label for="dep-usdc">USDC amount <span class="vt-bal" data-token="usdc" data-target="dep-usdc" title="click to use full balance">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="dep-usdc-slider" min="0" max="100" step="1" value="0" title="USDC as % of your balance">
+                                <span class="vt-hint" data-field="dep-usdc-pct" style="white-space:nowrap">0%</span>
+                            </div>
+                            <input id="dep-usdc" type="text" value="5000" inputmode="decimal">
+                            <div class="vt-recv"><span>you receive ≈</span> <span data-field="dep-out"></span></div>
+                        </div>
+                        <input type="hidden" id="dep-minshares" value="0">
+                        <div class="vt-actions">
+                            <button class="button primary" id="dep-go" type="button" disabled>Deposit</button>
+                            <button class="button ghost" id="dep-approve-vlt-p" type="button" disabled>Approve VLT</button>
+                            <button class="button ghost" id="dep-approve-usdc-p" type="button" disabled>Approve USDC</button>
+                        </div>
+                        <p class="calc-note" data-field="dep-note">&nbsp;</p>
+                    </div>
+
+                    <!-- zapDeposit -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-energy" aria-hidden="true"></i>
+                            <div><h2>Swap</h2><p>Swap USDC to vltUSDC</p></div>
+                            <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+                        </div>
+                        <div class="vt-row">
+                            <label for="zap-usdc">USDC
+                                <span class="vt-label-right">
+                                    <span class="vt-bal" data-token="usdc" data-target="zap-usdc" title="click to use full balance">…</span>
+                                </span>
+                            </label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="zap-slider" min="0" max="100" step="1" value="0" title="zap % of your USDC balance">
+                                <span class="vt-hint" data-field="zap-pct" style="white-space:nowrap">0%</span>
+                            </div>
+                            <input id="zap-usdc" type="text" value="10000" inputmode="decimal">
+                            <div class="vt-recv"><span>you receive ≈</span> <span data-field="zap-out"></span></div>
+                        </div>
+                        <input type="hidden" id="zap-swap" value="0">
+                        <input type="hidden" id="zap-minvlt" value="0">
+                        <input type="hidden" id="zap-minshares" value="0">
+                        <div class="vt-actions">
+                            <button class="button primary" id="zap-go" type="button" disabled>Swap</button>
+                            <button class="button ghost" id="zap-approve-usdc-p" type="button" disabled>Approve USDC</button>
+                        </div>
+                        <div class="vt-route" data-field="zap-route" style="margin-top:18px;"><div class="vt-route-note">Enter a USDC amount to see the route.</div></div>
+                        <p class="calc-note" data-field="zap-note">&nbsp;</p>
+                    </div>
+
+                    <!-- Redeem -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-minus" aria-hidden="true"></i>
+                            <div><h2>Redeem</h2><p>Burn shares, receive both tokens in kind.</p></div>
+                            <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+                        </div>
+                        <div class="vt-row">
+                            <label for="red-shares">shares (vltUSDC) <span class="vt-bal" data-token="shares" data-target="red-shares" title="click to use full balance">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="red-slider" min="0" max="100" step="1" value="0" title="redeem % of your share balance">
+                                <span class="vt-hint" data-field="red-pct" style="white-space:nowrap">0%</span>
+                            </div>
+                            <input id="red-shares" type="text" value="0">
+                            <div class="vt-recv"><span>you receive ≈</span> <span data-field="red-out"></span></div>
+                        </div>
+                        <div class="vt-actions">
+                            <button class="button primary" id="red-go" type="button">Redeem</button>
+                        </div>
+                        <p class="calc-note" data-field="red-note">&nbsp;</p>
+                    </div>
+
+                    <!-- Compound -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-refresh" aria-hidden="true"></i>
+                            <div><h2>Compound</h2><p>Auto-rebalance + reinvest. Caller earns 1% finder fee.</p></div>
+                            <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+                        </div>
+                        <div class="vt-actions"><button class="button primary" id="cmp-go" type="button">Compound</button></div>
+                        <div class="vt-kvs" style="margin-top:18px;">
+                            <div class="vt-kv"><span>keeper profitability</span><strong data-field="cmp-profit">…</strong></div>
+                            <div class="vt-kv"><span>accrued VLT (fees + retained)</span><strong data-field="cmp-vlt">…</strong></div>
+                            <div class="vt-kv"><span>accrued USDC (fees + retained)</span><strong data-field="cmp-usdc">…</strong></div>
+                            <div class="vt-kv"><span>claimable value</span><strong data-field="cmp-value">…</strong></div>
+                            <div class="vt-kv"><span>min to compound</span><strong data-field="cmp-min">…</strong></div>
+                            <div class="vt-kv"><span>finder reward (1% of fees)</span><strong data-field="cmp-reward">…</strong></div>
+                            <div class="vt-kv"><span>gas estimate</span><strong data-field="cmp-gas">…</strong></div>
+                        </div>
+                        <p class="calc-note" data-field="cmp-note">&nbsp;</p>
+                    </div>
+
+                </div>
+
+                <!-- Tx log -->
+                <div class="calculator-panel reveal is-visible" style="margin-top: 24px;">
+                    <div class="panel-heading">
+                        <i class="simple-icon-list" aria-hidden="true"></i>
+                        <div><h2>Activity log</h2><p>Newest first.</p></div>
+                    </div>
+                    <div id="txlog"></div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner"><p>vltUSDC · auto-compounding Uniswap V4 liquidity vault. Non-custodial — no admin, no pause.</p></div>
+    </footer>
+
+    <!-- Wallet modals driven by connectEthWallet.js -->
+    <div class="modal fade" id="walletPickerModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Choose a wallet</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body"></div>
+        </div></div>
+    </div>
+    <div class="modal fade" id="walletNotDetectedModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Wallet Not Detected</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body"><p>Install an Ethereum wallet (MetaMask, Rabby, Coinbase Wallet) and refresh.</p></div>
+        </div></div>
+    </div>
+    <div class="modal fade" id="wrongNetworkModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Wrong Network</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body"><p>Switch your wallet to a supported network (Ethereum mainnet).</p></div>
+        </div></div>
+    </div>
+    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Settings</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body">
+                <nav class="vt-mtabs">
+                    <button type="button" class="vt-mtab active" data-stab="slippage">Slippage</button>
+                    <button type="button" class="vt-mtab" data-stab="approvals">Approvals</button>
+                </nav>
+                <div class="vt-mpane active" id="mset-slippage">
+                    <p style="opacity:.65;font-size:.85rem;margin:0 0 16px">Tolerance applied to the zap's auto-calculated <b>minVltOut</b>/<b>minShares</b>. (Redeem takes no slippage bound — it's in-kind and can't be sandwiched for value.)</p>
+                    <div class="vt-slip-row">
+                        <input type="range" id="slip-range" min="0.1" max="5" step="0.1" value="1">
+                        <input id="slip-input" class="vt-slip-num" type="number" min="0.1" max="50" step="0.1" value="1">
+                        <span>%</span>
+                    </div>
+                    <div class="vt-slip-presets">
+                        <button type="button" class="button ghost small" data-slip="0.5">0.5%</button>
+                        <button type="button" class="button ghost small" data-slip="1">1%</button>
+                        <button type="button" class="button ghost small" data-slip="3">3%</button>
+                    </div>
+                </div>
+                <div class="vt-mpane" id="mset-approvals">
+                    <p style="opacity:.65;font-size:.85rem;margin:0 0 16px">One-time token allowances the vault/helper need to move your tokens. Approve grants MAX; toggling again revokes (sets 0).</p>
+                    <div class="vt-approval-row">
+                        <div class="vt-approval-label"><strong>VLT → Vault</strong><span>required for Deposit</span></div>
+                        <button class="button ghost" id="dep-approve-vlt" type="button" disabled>Approve VLT</button>
+                    </div>
+                    <div class="vt-approval-row">
+                        <div class="vt-approval-label"><strong>USDC → Vault</strong><span>required for Deposit</span></div>
+                        <button class="button ghost" id="dep-approve-usdc" type="button" disabled>Approve USDC</button>
+                    </div>
+                    <div class="vt-approval-row">
+                        <div class="vt-approval-label"><strong>USDC → ZapHelper</strong><span>required for Swap</span></div>
+                        <button class="button ghost" id="zap-approve-usdc" type="button" disabled>Approve USDC</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="settings-footer"><button type="button" class="button primary" id="slip-save" data-dismiss="modal">Save</button></div>
+        </div></div>
+    </div>
+    <div class="modal fade" id="txModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="tx-modal-title"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body" id="tx-modal-body"></div>
+            <div class="modal-footer"><button type="button" class="button primary" data-dismiss="modal">Close</button></div>
+        </div></div>
+    </div>
+
+    <script src="js/vendor/jquery-3.3.1.min.js"></script>
+    <script src="js/vendor/bootstrap.bundle.min.js"></script>
+    <!-- Modern web3 1.10 (NOT the shared js/vendor/web3.min.js, which is an early 1.0.0-beta whose
+         ABI coder can't parse modern fragments like custom errors/tuples). Test-page only. -->
+    <script src="js/vendor/web3-1.10.min.js"></script>
+    <script src="js/vendor/numeral/numeral.min.js"></script>
+    <!-- Shared site chrome: scroll-driven header background (.is-scrolled) + reveal. Same script
+         the landing pages use; no-ops on the elements this page doesn't have (nav-toggle, to-top). -->
+    <script src="js/vlt-landing.js"></script>
+    <!-- Bundled @uniswap/universal-router-sdk (+ v3/v2/router/sdk-core) → window.UniswapRouting.
+         Build with `npm run bundle:routing`. Standalone vendor file (kept OUT of the build:js
+         bundle); only used when the Config "Uniswap routing SDK" toggle is on. -->
+    <script src="js/vendor/uniswap-routing.js"></script>
+    <script src="js/config.js"></script>
+    <!-- build:js js/vltUSDC.bundle.js -->
+    <script src="js/vault-abi.js"></script>
+    <script src="js/connectEthWallet.js"></script>
+    <script src="js/vltUSDC.js"></script>
+    <!-- endbuild -->
+</body>
+
+</html>

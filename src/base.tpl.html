@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8"/>
+    <title>Bankroll</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="img/logo/logo-exchange-200.png" rel="icon">
+    <link rel="stylesheet" href="font/iconsmind/style.css"/>
+    <link rel="stylesheet" href="font/simple-line-icons/css/simple-line-icons.css"/>
+
+    <link rel="stylesheet" href="css/vendor/bootstrap-stars.css"/>
+    <link rel="stylesheet" href="css/vendor/bootstrap.min.css"/>
+    <link rel="stylesheet" href="css/vendor/owl.carousel.min.css"/>
+    <link rel="stylesheet" href="css/vendor/bootstrap-stars.css"/>
+    <link rel="stylesheet" href="css/vendor/component-custom-switch.min.css" />
+    <link rel="stylesheet" href="css/vendor/video-js.css"/>
+    <link rel="stylesheet" href="css/dore.dark.purple.css"/>
+    <link rel="stylesheet" href="css/main.css"/>
+</head>
+
+<body class="show-spinner">
+<div class="landing-page">
+    <div class="mobile-menu">
+        <a href="#home" class="logo-mobile scrollTo">
+            <span></span>
+        </a>
+        <ul class="navbar-nav">
+            <li class="nav-item"><a href="/rocket.html">ROCKET</a></li>
+            <li class="nav-item" id="contractLink"><a href="https://tronscan.org/#/contract/TSzoRNQxgFhPZFXB4zA3C2voP7U38r8b5u">CONTRACT</a></li>
+            <li class="nav-item"><a href="/media/bankroll.network-guide.pdf">GUIDE</a></li>
+            <li class="nav-item"><a href="https://www.youtube.com/watch?v=JQ4Xk0e29DY">WALKTHROUGH</a></li>
+            <li class="nav-item"><a href="#faq" class="scrollTo">FAQ</a></li>
+            <li class="nav-item"><a href="https://teespring.com/stores/bankroll-network">SHOP</a></li>
+        </ul>
+    </div>
+
+    <div class="main-container">
+        <nav class="landing-page-nav">
+            <div class="container d-flex align-items-center justify-content-between">
+                <a class="navbar-logo-text pull-left scrollTo" href="#home">
+                    <img alt="footer logo" src="img/logo/LogoWhiteText.png">
+                </a>
+                <ul class="navbar-nav d-none d-lg-flex flex-row">
+                    <li class="nav-item"><a href="/rocket.html">ROCKET</a></li>
+                    <li class="nav-item"><a href="https://tronscan.org/#/contract/TSzoRNQxgFhPZFXB4zA3C2voP7U38r8b5u">CONTRACT</a></li>
+                    <li class="nav-item"><a href="/media/bankroll.network-guide.pdf">GUIDE</a></li>
+                    <li class="nav-item"><a href="https://www.youtube.com/watch?v=JQ4Xk0e29DY">WALKTHROUGH</a></li>
+                    <li class="nav-item"><a href="#faq" class="scrollTo">FAQ</a></li>
+                    <li class="nav-item"><a href="https://teespring.com/stores/bankroll-network">SHOP</a></li>
+                </ul>
+                <a href="#" class="mobile-menu-button">
+                    <i class="simple-icon-menu"></i>
+                </a>
+            </div>
+        </nav>
+
+        <div class="content-container" id="home">
+            <div class="section home">
+                <div class="container">
+                    <div class="row home-row mb-2">
+                        <div class="modal fade" id="tronWebModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">TronWeb Not Detected</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>TronWeb is required for access to Bankroll</h3>
+                                        <p>If you have TronWeb installed make sure you are logged in or have a wallet selected</p>
+                                        <p>For desktop we recommend Chrome / TronLink: <a
+                                                href="https://chrome.google.com/webstore/detail/tronlink/ibnejdfjmmkpcnlpebklmnkoeoihofec">Click
+                                            here</a></p>
+                                        <p>For mobile we recommend MathWallet: <a href="https://mathwallet.org/">Click
+                                            here</a></p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="invalidAmountModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" >Whoops!</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>Enter Amount in TRX</h3>
+                                        <p>Please enter a valid integer amount. Thanks! </p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="invalidAddressModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Whoops!</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>Enter a valid TRX Address</h3>
+                                        <p>Please check that TRX address again. Thanks! </p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="invalidRefAddressModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Whoops!</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>Invalid TRX Address Detected in Referral Link</h3>
+                                        <p>Please check that TRX address again. Thanks! </p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="txModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Transaction Complete</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>You can track your transaction below</h3>
+                                        <p>Check on Tronscan: <span id="txId"></span></p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="txErrorModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Whoops!</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>TronLink Reported a Problem</h3>
+                                        <p id="txErrorId"></p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Houston, we have a problem!</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <h3>Check your gauges</h3>
+                                        <p id="errorId"></p>
+                                    </div>
+                                    <div class="modal-footer text-center">
+                                        <button type="button" class="btn btn-outline-semi-light default" data-dismiss="modal">Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="container col-12 col-xl-6 col-lg-6 col-md-6 mb-4">
+                            <div class="home-text">
+                                <!--<div class="display-1 mb-4">DAILY INCOME AND LOW FEES FOREVER</div>-->
+                                <div class="display-1 mb-4">SUSTAINABLE DAILY CASHFLOW FOR ALL</div>
+                                <p class="white mb-3">
+                                    Bankroll is a secure, decentralized, and borderless social trust
+                                </p>
+                                <p class="white mb-3">
+                                    3.33% of deposits are paid out daily, down to the minute</p>
+                                <p class="white mb-3">
+                                    Earn 1.25% referral compensation indefinitely
+                                </p>
+                                <p class="white mb-3">
+                                    Building block for other dApps via the Sponsor API
+                                </p>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-6 col-lg-6 col-md-6">
+                            <div class="text-right mb-2">
+                            <span class="custom-control custom-checkbox" style="display:unset;">
+                                                <input type="checkbox" class="custom-control-input" id="walletProtection" checked>
+                                                <label class="custom-control-label" for="walletProtection">Tx Burn Protection</label>
+                                            </span>
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3>Fund</h3>
+                                    <form>
+
+                                        <div class="form-group">
+                                            <label>Total Credits: <span id="checkInvestments" class="text-white">0.0</span>
+                                                TRX</label>
+                                            <small id="referralCreditsHelp" class="form-text text-muted">Referral / Sponsorship Credits:  <span id="checkReferrals" class="text-white">0.0</span> / <span id="checkSponsorships" class="text-white">0.0</span> TRX
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="buyAmount">Funding Amount</label>
+                                            <input type="number" class="form-control" id="buyAmount"
+                                                   aria-describedby="buyHelp"
+                                                   placeholder="TRX">
+                                            <small id="buyHelp" class="form-text text-muted">Depositor credited 85% of deposit after fees
+                                            </small>
+                                        </div>
+                                        <div class="form-row">
+                                        <div class="form-group col-3 text-left">
+                                            <a class="btn btn-outline-semi-light default mb-0"
+                                               id="buy" onclick="buy()">FUND</a>
+                                        </div>
+                                        <div class="form-group col-9 text-right">
+                                            <p>Whale Status: <span id="getMaxDepositCap" class="text-white">0.0</span> TRX<br>
+                                                <small>Suggested deposits grow with the contract</small>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4 mt-4">
+                        <div class="col-12 col-xl-6 col-lg-6 col-md-6 text-left">
+                            <p class="white">Network: <span id="network">Detecting...</span>
+                            &nbsp;&nbsp;&nbsp;Bandwidth: <span id="getBandwidth">0</span> &nbsp;&nbsp; Energy: <span id="getEnergy">0</span>
+                            </p>
+                        </div>
+                        <div class="col-12 col-xl-6 col-lg-6 text-xl-right text-lg-right text-md-right">
+                            <p class="white">Wallet: <span id="walletAddress">Loading...</span>&nbsp;&nbsp;&nbsp;
+                                Balance: <span id="walletBalanceValue">0.0</span> TRX
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="container col-12 col-xl-6 col-lg-6 col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3>Sponsor</h3>
+                                    <form>
+                                        <div class="form-group">
+                                            <label for="recipient">Recipient</label>
+                                            <input type="text" class="form-control" id="recipient"
+                                                   aria-describedby="recipientHelp"
+                                                   placeholder="Address">
+                                            <small id="recipientHelp" class="form-text text-muted">Depositor credited 1.25% referral fee
+                                            </small>
+                                            <label for="fundAmount">Funding Amount</label>
+                                            <input type="number" class="form-control" id="fundAmount"
+                                                   aria-describedby="fundHelp"
+                                                   placeholder="TRX">
+                                            <small id="fundHelp" class="form-text text-muted">Recipient credited 85% of deposit after fees
+                                            </small>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group col-3 text-left">
+                                            <a class="btn btn-outline-semi-light default mb-0" id="sponsor" onclick="sponsor()">FUND</a>
+                                            </div>
+                                            <div class="form-group col-9 text-right custom-switch custom-switch-primary-inverse">
+                                                    <input class="custom-switch-input" id="slice" type="checkbox">
+                                                    <label class="custom-switch-btn mt-0" for="slice"></label>
+                                                    <small class="form-text text-muted p-0 m-0">Transfer from existing credits</small>
+
+                                            </div>
+                                        </div>
+                                    </form>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-6 col-lg-6 col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3>Claim</h3>
+                                    <form>
+                                        <label class="mt-4">Total Withdrawals: <span
+                                                id="checkTotalWithdrawals" class="text-white">0.0</span>
+                                            TRX</label><br/>
+                                        <label class="mt-4">Pending Referrals / Sponsorships: <span id="checkCurrentReferrals" class="text-white">0.0</span> / <span
+                                                id="checkCurrentSponsorships" class="text-white">0.0</span>
+                                            TRX</label>
+                                        <label class="mt-4">Credited / Available Balance: <span id="checkBalance" class="text-white">0.0</span> / <span
+                                                id="checkAvailableBalance" class="text-white">0.0</span>
+                                            TRX</label>
+                                        <small class="form-text text-muted">The lesser of 3.33% of total credits plus
+                                            referrals or 0.05% of the contract balance
+                                        </small>
+                                        <div class="form-group mt-4 mb-5">
+                                            <p class="text-left">
+                                                <a class="btn btn-outline-semi-light default mb-0 mr-2"
+                                                   id="withdraw" onclick="withdraw()">WITHDRAW</a>
+                                                <a class="btn btn-outline-semi-light default mb-0"
+                                                   id="reinvest" onclick="reinvest()">ROLL</a>
+                                            </p>
+                                        </div>
+                                    </form>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-4 mt-2">
+                        <div class="container col-12 col-xl-6 col-lg-6 col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3>Treasury</h3>
+
+                                    <form>
+                                        <div class="form-group">
+                                            <label for="donateAmount">Donation Amount</label>
+                                            <input type="number" class="form-control" id="donateAmount"
+                                                   aria-describedby="donateHelp"
+                                                   placeholder="TRX">
+                                            <small id="donateHelp" class="form-text text-muted">100% of your donation goes to the treasury for long term sustainability
+                                            </small>
+                                        </div>
+                                        <p class="text-left">
+                                            <a class="btn btn-outline-semi-light default mb-0"
+                                               id="donate" onclick="donate()">DONATE</a>
+                                        </p>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-6 col-lg-6 col-md-6">
+                            <h2 class="text-white-50">About</h2>
+                            <p class="text-white">The Bankroll Project is a social experiment on the TRON blockchain to implement a voluntary, sustainable, and permissionless universal basic income.
+                            &nbsp; Distribution: 2.5% to development and referrals, 12.5% to the in-contract treasury, and 85% credit to the depositor/beneficiary. Donations go directly to the treasury.
+                            <p class="white">Referral Link <br><span id="quoteDisplay">Loading...</span></p>
+                        </div>
+                    </div>
+                    <!--<div class="row">
+                        <div class="container col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h3>Wallet Info</h3>
+                                    <form>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-4">
+                                                <label for="walletAddress">Address</label>
+                                                <p id="walletAddress">Loading...</p>
+                                            </div>
+                                            <div class="form-group col-md-2">
+                                                <label for="walletBalance">Balance</label>
+                                                <p id="walletBalance"><span id="walletBalanceValue">0.0</span> TRX</p>
+                                            </div>
+                                            <div class="form-group col-md-6">
+                                                <label for="walletAddress">Referral Link</label>
+                                                <p class="text-left mb-0" id="quoteDisplay">
+                                                    Loading...
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>-->
+                    <div class="row pt-4 mt-4">
+                        <div class="container col-12 text-center">
+                            <h1 class="text-white-50">Stats</h1>
+                            <p>
+                                Bankroll is a thoughtfully designed public social trust on the TRON blockchain. Here is
+                                Bankroll by the numbers...
+                            </p>
+                        </div>
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-MaleFemale large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Members</h5>
+                                <p class="text-large mb-2 text-white"><span id="getTotalMembers">0</span></p>
+                                <p class="text-muted text-small">User Count</p>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Bank large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Contract Balance</h5>
+                                <p class="text-large mb-2 text-white"><span id="contractBalance">0.0</span></p>
+                                <p class="text-muted text-small">TRX</p>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Bar-Chart large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Total Deposits</h5>
+                                <p class="text-large mb-2 text-white"><span id="totalInvested">0.0</span></p>
+                                <p class="text-muted text-small">TRX</p>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Heart large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Total Donated</h5>
+                                <p class="text-large mb-2 text-white"><span id="totalDonated">0.0</span></p>
+                                <p class="text-muted text-small">TRX</p>
+                            </div>
+                        </div>
+
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Astronaut  large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Total Withdrawn</h5>
+                                <p class="text-large mb-2 text-white"><span id="totalWithdrawn">0.0</span></p>
+                                <p class="text-muted text-small">TRX</p>
+                            </div>
+                        </div>
+
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Sync large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Transactions</h5>
+                                <p class="text-large mb-2 text-white"><span id="totalTxs">0.0</span></p>
+                                <p class="text-muted text-small">Txs</p>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Formula large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Credit Ceiling</h5>
+                                <p class="text-large mb-2 text-white"><span id="getCreditCeiling">0</span></p>
+                                <p class="text-muted text-small">% of Balance</p>
+                            </div>
+                        </div>
+                        <div class="container col-12 col-xl-3 col-lg-3 col-md-3 text-center">
+                            <div class="price-top-part">
+                                <i class="iconsmind-Mail-Send large-icon"></i>
+                                <h5 class="mb-0 font-weight-semibold color-theme-1 mb-4">Total Sponsored</h5>
+                                <p class="text-large mb-2 text-white"><span id="totalSponsored">0</span></p>
+                                <p class="text-muted text-small">TRX</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section mt-4">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-12  text-center">
+                                <a id="faq"></a>
+                                <h1 class="text-white-50">FAQ</h1>
+                                <p>
+                                    Bankroll is a permissionless system for economic inclusion and helps its community increase the velocity of their income
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 p-0">
+                                <div class="owl-container">
+                                    <div class="owl-carousel home-carousel">
+                                        <!--<div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Road large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Roadmap
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        Life is a highway, I want to ride it all night long...JK. Bankroll is a finished product from the contract perspective.
+                                                        That said, we want to build an in-house nonprofit business to fund donations.  We will also partner with other developers to integrate
+                                                        the sponsorship and donate APIs which are very powerful. Finally, we have started on our stats and analytics platform which will measure the long term results of our social experiment.
+                                                    </p>
+                                                </div>
+                                                <p>&nbsp;</p>
+                                            </div>
+                                        </div>-->
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Skydiving large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Balance Protection
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        The corner stone of Bankroll is a simple mechanism that
+                                                        dynamically caps daily withdrawals at 0.05 - 0.025% of the total
+                                                        balance in contract. Most users will never be affected by the
+                                                        debt ceiling. This allows the contract to grow in a distributed
+                                                        and decentralized fashion
+                                                    </p>
+                                                </div>
+                                                <p>&nbsp;</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Line-Chart2 large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Lifetime Dividends
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        Players enjoy 100% of all deposits into the dividend pool, paid
+                                                        out daily at 3.33%. All commission fees are credited to account
+                                                        holders and paid out for the lifetime of the contract. 1.25%
+                                                        each for referral / custody
+                                                    </p>
+                                                </div>
+                                                <p>&nbsp;</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Alarm large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Longevity and Sustainability
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        The contract is designed to be a reusable solution for profit
+                                                        sharing. It is designed to be used by other contracts so funds
+                                                        are flowing in from a large TRON ecosystem.  Developers can leverage both donations
+                                                        and sponsorships to credit their users or incentivize users of Bankroll to participate.
+                                                    </p>
+                                                </div>
+                                                <p>&nbsp;</p>
+                                            </div>
+                                        </div>
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Coins large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Withdraw Anytime
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        Withdraw your dividends anytime on a per minute basis. No need
+                                                        to wait 24
+                                                        hours. <br><br><br><br><br><br><br><br><br><br>
+                                                    </p>
+                                                </div>
+                                                <p>&nbsp;</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Laptop-Phone large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Sleek and Responsive
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        The system is designed to work well on both desktop and mobile.
+                                                        A sleek dark theme keeps your information confidential and
+                                                        private <br><br><br><br><br><br><br><br><br><br>
+                                                    </p>
+                                                </div>
+                                                <!--<a class="btn btn-link font-weight-semibold" href="#">VIEW</a>-->
+                                            </div>
+                                        </div>
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <div>
+                                                    <i class="iconsmind-Gentleman large-icon"></i>
+                                                    <h5 class="mb-0 font-weight-semibold">
+                                                        Who Is Bankteller?
+                                                    </h5>
+                                                </div>
+                                                <div>
+                                                    <p class="detail-text">
+                                                        Bankteller is a long term Bitcoin and Solidity enthusiast. He loves math, computer science, AI, blockchain gaming,
+                                                        investing, the outdoors, and community building. Bankroll is
+                                                        his love letter to the dApp community at large.
+                                                    </p>
+                                                </div>
+                                                <p>&nbsp;</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="slider-nav text-center mb-5">
+                                        <a  class="left-arrow owl-prev">
+                                            <i class="simple-icon-arrow-left"></i>
+                                        </a>
+                                        <div class="slider-dot-container"></div>
+                                        <a  class="right-arrow owl-next">
+                                            <i class="simple-icon-arrow-right"></i>
+                                        </a>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row pt-4 mt-4">
+                            <div class="container col-12 text-center">
+                                <div><i class="iconsmind-Road-3 large-icon"></i></div>
+                                <h1 class="text-white-50">Roadmap</h1>
+                                <p class="detail-text">
+                                    Life is a highway, I want to ride it all night long...JK. Bankroll is a finished product from the contract perspective.
+                                    That said, we want to build an in-house nonprofit business to fund donations.  We will also partner with other developers to integrate
+                                    the sponsorship and donate APIs which are very powerful. Finally, we have started on our stats and analytics platform which will measure the long term results of our social experiment.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section footer mb-0">
+                    <div class="container">
+                        <div class="row footer-row">
+                            <div class="col-12 text-right">
+                                <a class="btn btn-circle btn-outline-semi-light footer-circle-button scrollTo"
+                                   href="#home"
+                                   id="footerCircleButton"><i
+                                        class="simple-icon-arrow-up"></i></a>
+                            </div>
+                            <div class="col-12 text-center footer-content">
+                                <a href="#home" class="scrollTo">
+                                    <img class="footer-logo" alt="footer logo" src="img/logo/LogoWhite.png"/>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="row" id="footerMenuAccordion">
+
+                        </div>
+                    </div>
+                    <div class="separator mt-5"></div>
+                    <div class="container copyright pt-5 pb-5">
+                        <div class="row">
+                            <div class="col-12"></div>
+                            <div class="col-6">
+                                <p class="mb-0">2020 © Bankroll</p>
+                            </div>
+                            <div class="col-6 text-right social-icons">
+                                <p><a href="https://t.me/bankrollnetwork" class="footer-link"><img
+                                        class="footer-telegram" src="./img/telegram-logo.svg"/> Join us on Telegram</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/vendor/lodash-4.17.10.min.js"></script>
+<script src="js/vendor/numeral/numeral.min.js"></script>
+<script src="js/vendor/jquery-3.3.1.min.js"></script>
+<script src="js/vendor/bootstrap.bundle.min.js"></script>
+<script src="js/vendor/owl.carousel.min.js"></script>
+<script src="js/vendor/landing-page/headroom.min.js"></script>
+<script src="js/vendor/landing-page/jQuery.headroom.js"></script>
+<script src="js/vendor/landing-page/jquery.scrollTo.min.js"></script>
+<script src="js/vendor/landing-page/jquery.autoellipsis.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/scripts.single.theme.js"></script>
+<script src="js/main.js"></script>
+</body>
+
+</html>

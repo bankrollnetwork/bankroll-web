@@ -1,0 +1,21 @@
+{
+  "hosting": {
+    "public": "output.nosync/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [ {
+      "source": "/*",
+      "destination": "/*.html"
+    } ],
+    "redirects": [ {
+      "source" : "/firebase/*",
+      "destination" : "https://www.firebase.com",
+      "type" : 302
+    }
+    ]
+
+  }
+}

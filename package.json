@@ -1,0 +1,52 @@
+{
+  "name": "dore-jquery",
+  "version": "1.0.2",
+  "description": "Dore JQuery Admin Theme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "backup": "netlify deploy --prod",
+    "tools": "browserify tools.js -o ./src/js/vendor/tools.js",
+    "bundle:routing": "esbuild uniswap-routing-entry.js --bundle --minify --format=iife --global-name=UniswapRouting --outfile=src/js/vendor/uniswap-routing.js",
+    "push": "netlify deploy --prod; firebase deploy"
+  },
+  "keywords": [
+    "Jquery",
+    "Admin",
+    "Dore"
+  ],
+  "author": "ColoredStrategies",
+  "devDependencies": {
+    "@uniswap/universal-router-sdk": "^5.8.0",
+    "browser-sync": "^2.26.10",
+    "del": "^3.0.0",
+    "esbuild": "^0.28.1",
+    "gulp": "^3.9.1",
+    "gulp-babel-minify": "^0.5.1",
+    "gulp-cache-bust": "^1.4.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-cssnano": "^2.1.3",
+    "gulp-html-replace": "^1.6.2",
+    "gulp-htmlmin": "^4.0.0",
+    "gulp-if": "^2.0.2",
+    "gulp-imagemin": "^4.1.0",
+    "gulp-rename": "^1.4.0",
+    "gulp-sass": "^5.1.0",
+    "gulp-useref": "^3.1.5",
+    "gulp-wait": "0.0.2",
+    "run-sequence": "^2.2.1",
+    "sass": "^1.101.0"
+  },
+  "dependencies": {
+    "gulp-terser": "^1.4.1",
+    "gulp-uglify": "^3.0.2",
+    "gulp-uglify-es": "^2.0.0",
+    "gulp-uglifyes": "^0.2.1",
+    "json-formatter-js": "^2.3.4",
+    "npm": "^6.14.7",
+    "promise-all-retry": "0.0.1",
+    "trongrid": "^1.2.4"
+  },
+  "overrides": {
+    "graceful-fs": "^4.2.11"
+  }
+}

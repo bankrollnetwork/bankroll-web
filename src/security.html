@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-102526491-3"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag("js", new Date());
+        gtag("config", "UA-102526491-3");
+    </script>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>VLT Security | Bankroll Vault Reviews and Scans</title>
+    <meta name="description" content="Review Bankroll Vault (VLT) security resources, including the internal Claude Opus audit, Shieldify third-party review, Go+ Labs scan, locked liquidity, no admin functions, and reduced DeFi attack surface."/>
+    <meta name="keywords" content="VLT security, Bankroll Vault audit, VLT audit, Shieldify Bankroll VLT, Go+ Labs VLT, locked liquidity, no admin functions"/>
+    <meta name="author" content="Bankroll Network"/>
+    <meta name="robots" content="index, follow, max-image-preview:large"/>
+    <link rel="canonical" href="https://bankroll.network/security.html"/>
+
+    <meta property="og:type" content="article"/>
+    <meta property="og:site_name" content="Bankroll Network"/>
+    <meta property="og:title" content="VLT Security"/>
+    <meta property="og:description" content="Security reviews, third-party scans, and high-level strengths for Bankroll Vault (VLT)."/>
+    <meta property="og:url" content="https://bankroll.network/security.html"/>
+    <meta property="og:image" content="https://bankroll.network/img/logo/vlt-2000.png"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="VLT Security"/>
+    <meta name="twitter:description" content="Review the internal audit, Shieldify review, Go+ scan, and onchain security posture for VLT."/>
+    <meta name="twitter:image" content="https://bankroll.network/img/logo/vlt-2000.png"/>
+
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="128x128" href="img/logo/vlt-128.png">
+    <link rel="icon" type="image/png" sizes="256x256" href="img/logo/vlt-256.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/logo/vlt-512.png">
+    <link rel="apple-touch-icon" sizes="200x200" href="img/logo/vlt-200.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="font/simple-line-icons/css/simple-line-icons.css"/>
+    <link rel="stylesheet" href="css/vlt-landing.css?v=20260515d"/>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "VLT Security",
+      "description": "Security reviews, third-party scans, and high-level security strengths for Bankroll Vault (VLT).",
+      "url": "https://bankroll.network/security.html",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Bankroll Network",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://bankroll.network/img/logo/vlt-2000.png"
+        }
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "Bankroll Vault (VLT)"
+      },
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "VLT security resources",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Internal audit by Claude Opus",
+            "url": "https://bankroll.network/media/VLT_Audit.pdf"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Third-party security review by Shieldify",
+            "url": "https://github.com/shieldify-security/audits-portfolio/blob/main/reports/Bankroll-VLT-Security-Review.pdf"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Go+ Labs token security scan",
+            "url": "https://console.gopluslabs.io/token-security/1/0x6b785a0322126826d8226d77e173d75DAfb84d11"
+          }
+        ]
+      }
+    }
+    </script>
+</head>
+
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <nav class="nav-shell" aria-label="Primary navigation">
+            <a class="brand" href="/" aria-label="Bankroll Vault home">
+                <img src="img/logo/LogoWhiteText.png" alt="Bankroll">
+                <span class="brand-token">VLT</span>
+            </a>
+            <button class="nav-toggle" type="button" aria-label="Open navigation">
+                <i class="simple-icon-menu" aria-hidden="true"></i>
+            </button>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/vltUSDC.html">vltUSDC</a>
+                <a href="https://x.com/Bankroll_Status" target="_blank" rel="noopener">X</a>
+                <a href="https://t.me/bankrollnetwork" target="_blank" rel="noopener">Telegram</a>
+                <a href="/purple-paper.html">Purple Paper</a>
+                <a href="/calculator.html">Calculator</a>
+                <a href="/security.html">Security</a>
+                <a href="/retired.html">Retired</a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="subpage-hero doc-hero" id="top">
+            <div class="subpage-inner">
+                <div class="subpage-copy reveal is-visible">
+                    <p class="eyebrow">VLT security</p>
+                    <h1>Security</h1>
+                    <p class="lead">Bankroll Vault keeps the security story simple: fixed supply, locked liquidity, no admin functions, and no complex DeFi custody surface.</p>
+                    <div class="doc-actions" aria-label="Security review actions">
+                        <a class="button primary" href="https://github.com/shieldify-security/audits-portfolio/blob/main/reports/Bankroll-VLT-Security-Review.pdf" target="_blank" rel="noopener">
+                            <i class="simple-icon-shield" aria-hidden="true"></i>
+                            Shieldify review
+                        </a>
+                        <a class="button ghost" href="https://console.gopluslabs.io/token-security/1/0x6b785a0322126826d8226d77e173d75DAfb84d11" target="_blank" rel="noopener">
+                            <i class="simple-icon-magnifier" aria-hidden="true"></i>
+                            Go+ scan
+                        </a>
+                        <a class="button ghost" href="https://bankroll.network/media/VLT_Audit.pdf" target="_blank" rel="noopener">
+                            <i class="simple-icon-doc" aria-hidden="true"></i>
+                            Internal audit
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-section doc-section">
+            <div class="wrap">
+                <div class="doc-layout">
+                    <article class="doc-main reveal">
+                        <div class="section-heading">
+                            <p class="eyebrow">Security posture</p>
+                            <h2>Simple contracts are easier to verify.</h2>
+                            <p>VLT is not a lending market, vault strategy, staking farm, bridge, or pooled custody product. It is a fixed-supply ERC-20 asset trading through a public Uniswap V2 liquidity market.</p>
+                        </div>
+
+                        <div class="step-grid">
+                            <section class="step-card">
+                                <span>01</span>
+                                <h3>Locked Liquidity</h3>
+                                <p>The VLT market is built around secured onchain liquidity. The liquidity base is visible through Ethereum and can be inspected directly by anyone.</p>
+                            </section>
+                            <section class="step-card">
+                                <span>02</span>
+                                <h3>No admin functions</h3>
+                                <p>The token contract has no privileged admin controls, no hidden owner switches, and no team-operated function that can quietly rewrite the asset rules.</p>
+                            </section>
+                            <section class="step-card">
+                                <span>03</span>
+                                <h3>No DeFi attack surface</h3>
+                                <p>VLT does not custody deposits, rebalance strategies, issue loans, handle liquidations, or expose a yield-farm control plane. The core asset surface stays intentionally narrow.</p>
+                            </section>
+                            <section class="step-card">
+                                <span>04</span>
+                                <h3>Verifiable onchain</h3>
+                                <p>Supply, transfers, liquidity, contract code, and market activity are public Ethereum data. Security review starts from evidence, not promises.</p>
+                            </section>
+                        </div>
+                    </article>
+
+                    <aside class="doc-aside reveal">
+                        <div class="proof-panel">
+                            <h3>Review sources</h3>
+                            <ul class="key-facts">
+                                <li><span>Internal audit</span><strong>Claude Opus</strong></li>
+                                <li><span>Third-party audit</span><strong>Shieldify</strong></li>
+                                <li><span>Security scan</span><strong>Go+ Labs</strong></li>
+                                <li><span>Contract</span><strong>0x6b...4d11</strong></li>
+                            </ul>
+                        </div>
+                        <div class="doc-callout strong">
+                            <strong>Security is a process, not a slogan.</strong>
+                            <p>Use the audits, scans, contract code, and onchain data together. Review the original documents before interacting with any asset.</p>
+                        </div>
+                    </aside>
+                </div>
+
+                <div class="doc-wide-panel reveal">
+                    <div class="section-heading">
+                        <p class="eyebrow">Security references</p>
+                        <h2>Read the reviews directly.</h2>
+                        <p>These links collect the current VLT security materials in one place. The internal review remains available, but this page now routes users through the full security context.</p>
+                    </div>
+                    <div class="thesis-stack">
+                        <section class="article-panel">
+                            <h3>Internal audit by Claude Opus</h3>
+                            <p>Review the internal audit PDF for a contract-level pass over VLT and its security assumptions.</p>
+                            <div class="doc-actions">
+                                <a class="button ghost" href="https://bankroll.network/media/VLT_Audit.pdf" target="_blank" rel="noopener">
+                                    <i class="simple-icon-doc" aria-hidden="true"></i>
+                                    Open internal audit
+                                </a>
+                            </div>
+                        </section>
+                        <section class="article-panel">
+                            <h3>Third-party audit by Shieldify</h3>
+                            <p>Open Shieldify's independent security review for Bankroll VLT in the public audit portfolio.</p>
+                            <div class="doc-actions">
+                                <a class="button ghost" href="https://github.com/shieldify-security/audits-portfolio/blob/main/reports/Bankroll-VLT-Security-Review.pdf" target="_blank" rel="noopener">
+                                    <i class="simple-icon-shield" aria-hidden="true"></i>
+                                    Open Shieldify review
+                                </a>
+                            </div>
+                        </section>
+                        <section class="article-panel">
+                            <h3>Third-party security scan by Go+ Labs</h3>
+                            <p>Use the Go+ Labs token security scan to inspect automated risk signals for the VLT contract on Ethereum.</p>
+                            <div class="doc-actions">
+                                <a class="button ghost" href="https://console.gopluslabs.io/token-security/1/0x6b785a0322126826d8226d77e173d75DAfb84d11" target="_blank" rel="noopener">
+                                    <i class="simple-icon-magnifier" aria-hidden="true"></i>
+                                    Open Go+ scan
+                                </a>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <p>This page is a convenience hub for VLT security resources. You are interacting with blockchain contracts directly and are responsible for your own transactions. 2026 &copy; Bankroll.</p>
+        </div>
+    </footer>
+
+    <button class="to-top" type="button" aria-label="Back to top">
+        <i class="simple-icon-arrow-up" aria-hidden="true"></i>
+    </button>
+    <div class="copy-toast" role="status" aria-live="polite"></div>
+
+    <script src="js/vendor/jquery-3.3.1.min.js"></script>
+    <script src="js/vlt-landing.js?v=20260515b"></script>
+</body>
+
+</html>

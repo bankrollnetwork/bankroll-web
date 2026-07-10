@@ -1,0 +1,4 @@
+This is a Brave Rewards publisher verification file.
+
+Domain: bankroll.network
+Token: 3a94b58d68449e618d0f388b70a49d75350f5d004f62d73fc455ec541a51b95e

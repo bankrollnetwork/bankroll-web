@@ -1,0 +1,111 @@
+html {
+  width: 100%;
+}
+
+body {
+  overflow-x: hidden !important;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Hide everything under body tag */
+body.show-spinner > *{
+  opacity: 0;
+}
+
+/* Spinner */
+body.show-spinner::before{
+  content: " ";
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  border-top-color: rgba(0, 0, 0, 0.3);
+  animation: spin 1s ease-in-out infinite;
+  -webkit-animation: spin 1s ease-in-out infinite;
+  left: calc(50% - 15px);
+  top: calc(50% - 15px);
+  position: fixed;
+  z-index: 1;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@-webkit-keyframes spin {
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+div.mobile-menu {
+  overflow: auto;
+}
+
+
+.text-muted {
+  color: #969696 !important;
+}
+
+
+.landing-page .section {
+  padding-top: unset;
+  padding-bottom: unset;
+  margin-bottom: unset;
+}
+
+.landing-page .section.home {
+  height: unset;
+  min-height: 1440px;
+}
+
+.landing-page .home-text .display-1 {
+    margin-bottom: unset;
+}
+
+.footer-telegram {
+  height: 24px;
+  width: 24px;
+}
+
+.footer-link {
+  color: #d0d0d0;
+}
+
+p.detail-text {
+  color: #d0d0d0;
+}
+
+.landing-page p {
+  color: #969696;
+}
+
+p {
+  color: #969696;
+}
+
+.lobster-title {
+  font-family: 'Lobster', cursive;
+  font-size: 8rem !important;
+  color: whitesmoke;
+
+}
+
+input {
+  font-size: 1.5rem !important;
+}
+
+/* start styles for translate feature */
+#google_translate_element{width:300px;float:right;text-align:right;display:block}
+.goog-te-banner-frame.skiptranslate { display: none !important;} 
+body { top: 0px !important; }
+#goog-gt-tt{display: none !important; top: 0px !important; } 
+.goog-tooltip skiptranslate{display: none !important; top: 0px !important; } 
+.activity-root { display: hide !important;} 
+.status-message { display: hide !important;}
+.started-activity-container { display: hide !important;}
+/* end styles for translate feature */
+

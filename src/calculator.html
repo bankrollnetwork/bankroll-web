@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-102526491-3"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag("js", new Date());
+        gtag("config", "UA-102526491-3");
+    </script>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>VLT Calculator | Bankroll Vault Onchain Scenario Tool</title>
+    <meta name="description" content="Run Bankroll Vault (VLT) scenarios with live Ethereum data from the VLT/WETH Uniswap V2 pool, including dollar-to-VLT quotes, supply targets, ETH estimates, and pool math."/>
+    <meta name="keywords" content="VLT calculator, Bankroll Vault calculator, VLT price, VLT Uniswap, Ethereum liquidity calculator, DeFi calculator, Proof of Liquidity"/>
+    <meta name="author" content="Bankroll Network"/>
+    <meta name="robots" content="index, follow, max-image-preview:large"/>
+    <link rel="canonical" href="https://bankroll.network/calculator.html"/>
+
+    <meta property="og:type" content="website"/>
+    <meta property="og:site_name" content="Bankroll Network"/>
+    <meta property="og:title" content="VLT Calculator"/>
+    <meta property="og:description" content="Estimate VLT scenarios from live Ethereum liquidity data and Uniswap V2 pool math."/>
+    <meta property="og:url" content="https://bankroll.network/calculator.html"/>
+    <meta property="og:image" content="https://bankroll.network/img/logo/vlt-2000.png"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="VLT Calculator"/>
+    <meta name="twitter:description" content="Run VLT dollar, supply, ETH, and liquidity scenarios from live onchain data."/>
+    <meta name="twitter:image" content="https://bankroll.network/img/logo/vlt-2000.png"/>
+
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="128x128" href="img/logo/vlt-128.png">
+    <link rel="icon" type="image/png" sizes="256x256" href="img/logo/vlt-256.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/logo/vlt-512.png">
+    <link rel="apple-touch-icon" sizes="200x200" href="img/logo/vlt-200.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="font/simple-line-icons/css/simple-line-icons.css"/>
+    <link rel="stylesheet" href="css/vlt-landing.css?v=20260519a"/>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://bankroll.network/#organization",
+          "name": "Bankroll Network",
+          "url": "https://bankroll.network/",
+          "logo": "https://bankroll.network/img/logo/vlt-2000.png",
+          "sameAs": [
+            "https://t.me/bankrollnetwork"
+          ]
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://bankroll.network/calculator.html#calculator",
+          "name": "VLT Calculator",
+          "url": "https://bankroll.network/calculator.html",
+          "applicationCategory": "FinanceApplication",
+          "operatingSystem": "Web",
+          "description": "A readonly scenario calculator for Bankroll Vault (VLT) using live Ethereum and Uniswap V2 liquidity data.",
+          "isPartOf": {
+            "@id": "https://bankroll.network/#organization"
+          }
+        }
+      ]
+    }
+    </script>
+</head>
+
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <nav class="nav-shell" aria-label="Primary navigation">
+            <a class="brand" href="/" aria-label="Bankroll Vault home">
+                <img src="img/logo/LogoWhiteText.png" alt="Bankroll">
+                <span class="brand-token">VLT</span>
+            </a>
+            <button class="nav-toggle" type="button" aria-label="Open navigation">
+                <i class="simple-icon-menu" aria-hidden="true"></i>
+            </button>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/vltUSDC.html">vltUSDC</a>
+                <a href="https://x.com/Bankroll_Status" target="_blank" rel="noopener">X</a>
+                <a href="https://t.me/bankrollnetwork" target="_blank" rel="noopener">Telegram</a>
+                <a href="/purple-paper.html">Purple Paper</a>
+                <a href="/calculator.html">Calculator</a>
+                <a href="/security.html">Security</a>
+                <a href="/retired.html">Retired</a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="subpage-hero calculator-hero" id="top">
+            <div class="subpage-inner calculator-hero-inner">
+                <div class="subpage-copy reveal is-visible">
+                    <p class="eyebrow">Onchain scenario tool</p>
+                    <h1>Calculator</h1>
+                    <p class="lead">Estimate buys, supply targets, and pool impact from live VLT/WETH Uniswap V2 data. Readonly, onchain, and built for quick what-if math.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-section calculator-section">
+            <div class="wrap">
+                <div class="calculator-status reveal" aria-live="polite">
+                    <div class="status-card">
+                        <span>ETH/USD</span>
+                        <strong data-calc-field="eth-usd">Loading</strong>
+                    </div>
+                    <div class="status-card">
+                        <span>VLT spot</span>
+                        <strong data-calc-field="vlt-spot">Loading</strong>
+                    </div>
+                    <div class="status-card">
+                        <span>Pool reserves</span>
+                        <strong data-calc-field="pool-reserves">Loading</strong>
+                    </div>
+                    <div class="status-card">
+                        <span>Updated</span>
+                        <strong data-calc-field="updated">Connecting</strong>
+                    </div>
+                </div>
+
+                <div class="calculator-grid">
+                    <form class="calculator-panel reveal" data-calculator="dollars">
+                        <div class="panel-heading">
+                            <i class="simple-icon-wallet" aria-hidden="true"></i>
+                            <div>
+                                <h2>Dollars to VLT</h2>
+                                <p>Estimate how many VLT a dollar amount routes through WETH.</p>
+                            </div>
+                        </div>
+                        <label for="usd-input">Dollar amount</label>
+                        <div class="input-shell">
+                            <span>$</span>
+                            <input id="usd-input" name="usd" type="text" inputmode="decimal" value="1000" placeholder="1000">
+                        </div>
+                        <div class="result-grid">
+                            <div>
+                                <span>Estimated VLT</span>
+                                <strong data-calc-field="usd-vlt">-</strong>
+                            </div>
+                            <div>
+                                <span>ETH routed</span>
+                                <strong data-calc-field="usd-eth">-</strong>
+                            </div>
+                            <div>
+                                <span>Average price</span>
+                                <strong data-calc-field="usd-average">-</strong>
+                            </div>
+                            <div>
+                                <span>Price impact</span>
+                                <strong data-calc-field="usd-impact">-</strong>
+                            </div>
+                        </div>
+                        <p class="calc-note" data-calc-field="usd-note">Waiting for live liquidity data.</p>
+                    </form>
+
+                    <form class="calculator-panel reveal" data-calculator="supply">
+                        <div class="panel-heading">
+                            <i class="simple-icon-pie-chart" aria-hidden="true"></i>
+                            <div>
+                                <h2>Supply Target</h2>
+                                <p>Estimate the cost to acquire a percent of the fixed VLT supply.</p>
+                            </div>
+                        </div>
+                        <label for="percent-input">Percent of 1.8M supply</label>
+                        <div class="input-shell">
+                            <input id="percent-input" name="percent" type="text" inputmode="decimal" value="1" placeholder="1">
+                            <span>%</span>
+                        </div>
+                        <div class="result-grid">
+                            <div>
+                                <span>VLT target</span>
+                                <strong data-calc-field="supply-vlt">-</strong>
+                            </div>
+                            <div>
+                                <span>ETH needed</span>
+                                <strong data-calc-field="supply-eth">-</strong>
+                            </div>
+                            <div>
+                                <span>USD estimate</span>
+                                <strong data-calc-field="supply-usd">-</strong>
+                            </div>
+                            <div>
+                                <span>Average price</span>
+                                <strong data-calc-field="supply-average">-</strong>
+                            </div>
+                        </div>
+                        <p class="calc-note" data-calc-field="supply-note">Waiting for live liquidity data.</p>
+                    </form>
+                </div>
+
+                <div class="calculator-table-panel reveal">
+                    <div class="section-heading">
+                        <p class="eyebrow">Supply ladder</p>
+                        <h2>What does a slice of VLT cost?</h2>
+                        <p>Each row estimates the ETH and dollar cost to acquire a fixed share of the 1.8M supply through the current VLT/WETH pool.</p>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="scenario-table">
+                            <thead>
+                                <tr>
+                                    <th>Supply</th>
+                                    <th>VLT</th>
+                                    <th>ETH needed</th>
+                                    <th>USD estimate</th>
+                                    <th>Avg VLT price</th>
+                                </tr>
+                            </thead>
+                            <tbody data-calc-field="ladder-body">
+                                <tr>
+                                    <td colspan="5">Loading live onchain data.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="calculator-table-panel formula-panel reveal">
+                    <div class="section-heading">
+                        <p class="eyebrow">Constant product formula</p>
+                        <h2>See the curve behind the pool.</h2>
+                        <p>Uniswap V2 keeps the VLT and WETH reserves balanced by the constant product formula. As VLT leaves the pool, the ETH price rises along the curve. This is a fair launch powered by deep liquidity.</p>
+                    </div>
+                    <div class="formula-overview">
+                        <div class="formula-equation" aria-label="Constant product formula">
+                            <span>x * y = k</span>
+                            <p>VLT reserve times WETH reserve equals the pool constant.</p>
+                        </div>
+                        <div class="formula-live-grid">
+                            <div>
+                                <span>x: VLT reserve</span>
+                                <strong data-calc-field="formula-x">Loading</strong>
+                            </div>
+                            <div>
+                                <span>y: WETH reserve</span>
+                                <strong data-calc-field="formula-y">Loading</strong>
+                            </div>
+                            <div>
+                                <span>k value</span>
+                                <strong data-calc-field="formula-k">Loading</strong>
+                            </div>
+                            <div>
+                                <span>VLT left in LP</span>
+                                <strong data-calc-field="formula-current-percent">Loading</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <form class="formula-target" data-calculator="formula">
+                        <label for="formula-percent-input">Percent of fixed supply left in LP</label>
+                        <div class="input-shell">
+                            <input id="formula-percent-input" name="formula-percent" type="text" inputmode="decimal" placeholder="75">
+                            <span>%</span>
+                        </div>
+                        <div class="result-grid formula-result-grid">
+                            <div>
+                                <span>Target VLT left</span>
+                                <strong data-calc-field="formula-target-vlt">-</strong>
+                            </div>
+                            <div>
+                                <span>Target ETH reserve</span>
+                                <strong data-calc-field="formula-target-eth">-</strong>
+                            </div>
+                            <div>
+                                <span>Spot price</span>
+                                <strong data-calc-field="formula-target-price">-</strong>
+                            </div>
+                            <div>
+                                <span>Market cap</span>
+                                <strong data-calc-field="formula-target-market-cap">-</strong>
+                            </div>
+                        </div>
+                        <p class="calc-note" data-calc-field="formula-note">Waiting for live liquidity data.</p>
+                    </form>
+                    <div class="table-wrap formula-table-wrap">
+                        <table class="scenario-table formula-table">
+                            <thead>
+                                <tr>
+                                    <th>% left in LP</th>
+                                    <th>VLT left</th>
+                                    <th>X from now</th>
+                                    <th>LP value</th>
+                                    <th>Market cap</th>
+                                    <th>Spot price USD</th>
+                                </tr>
+                            </thead>
+                            <tbody data-calc-field="formula-body">
+                                <tr>
+                                    <td colspan="6">Loading live onchain data.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="calculator-disclaimer reveal">
+                    <strong>Readonly estimates.</strong>
+                    <span>Calculations use public Ethereum RPC endpoints, Uniswap V2 router quotes when available, and constant-product math as a fallback. Estimates exclude gas, slippage settings, price movement, routing changes, and MEV.</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <p>This application is beta software and is highly experimental. You are interacting with the blockchain itself and are 100% responsible for your transactions. Please do your own research before interacting with any contract or asset on the blockchain. 2026 &copy; Bankroll.</p>
+        </div>
+    </footer>
+
+    <button class="to-top" type="button" aria-label="Back to top">
+        <i class="simple-icon-arrow-up" aria-hidden="true"></i>
+    </button>
+    <div class="copy-toast" role="status" aria-live="polite"></div>
+
+    <script src="js/vendor/jquery-3.3.1.min.js"></script>
+    <script src="js/vendor/web3.min.js"></script>
+    <script src="js/vlt-landing.js?v=20260515b"></script>
+    <script src="js/vlt-calculator.js?v=20260522d"></script>
+</body>
+
+</html>
