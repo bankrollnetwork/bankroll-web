@@ -89,7 +89,7 @@
         .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
         .vt-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; font-size: 0.85rem; opacity: 0.9; cursor: pointer; }
         .vt-check input { width: auto; margin: 0; }
-        /* Zap route is a key/value table with the SAME styling as the compound stats (.vt-kv): it
+        /* Zap route is a key/value table with the SAME styling as the stats grid (.vt-kv): it
            inherits the panel font, tabular-nums, key/value opacity and row borders — no overrides
            except cleaner wrapping for the one long text value (the route path). + a status note. */
         .vt-route { margin-top: 12px; }
@@ -242,16 +242,14 @@
                 <!-- Tab control. Panels below are moved into these panes by setupTabs() on load. -->
                 <nav class="vt-tabs" id="vt-tabs">
                     <button type="button" class="vt-tab" data-tab="stats">Stats</button>
-                    <button type="button" class="vt-tab" data-tab="swap">Swap</button>
                     <button type="button" class="vt-tab" data-tab="deposit">Deposit</button>
-                    <button type="button" class="vt-tab" data-tab="compound">Compound</button>
+                    <button type="button" class="vt-tab" data-tab="advanced">Advanced</button>
                     <button type="button" class="vt-tab" data-tab="config">Config</button>
                 </nav>
                 <div class="vt-tab-content">
                     <div class="vt-tab-pane" id="pane-stats"></div>
-                    <div class="vt-tab-pane" id="pane-swap"></div>
                     <div class="vt-tab-pane" id="pane-deposit"></div>
-                    <div class="vt-tab-pane" id="pane-compound"></div>
+                    <div class="vt-tab-pane" id="pane-advanced"></div>
                     <div class="vt-tab-pane" id="pane-config"></div>
                 </div>
 
@@ -298,6 +296,8 @@
                             <div class="vt-kv"><span>lifetime fee growth</span><strong data-field="vs-feegrowth">-</strong></div>
                             <div class="vt-kv"><span>7d APR</span><strong data-field="vs-apr7">-</strong></div>
                             <div class="vt-kv"><span>30d APR</span><strong data-field="vs-apr30">-</strong></div>
+                            <div class="vt-kv"><span>claimable (fees + retained)</span><strong data-field="vs-claimable">-</strong></div>
+                            <div class="vt-kv"><span>auto-compound trigger</span><strong data-field="vs-trigger">-</strong></div>
                         </div>
                         <p class="calc-note">L per share is liquidity-denominated, not USD.</p>
                     </div>
@@ -325,11 +325,11 @@
                         <p class="calc-note" data-field="fund-note">USDC uses setStorageAt (slot 9). VLT has no slot — bought via the zap route.</p>
                     </div>
 
-                    <!-- Deposit -->
+                    <!-- Direct deposit (Advanced tab) -->
                     <div class="calculator-panel reveal is-visible">
                         <div class="panel-heading">
                             <i class="simple-icon-plus" aria-hidden="true"></i>
-                            <div><h2>Deposit</h2><p>Direct USDC + VLT vault deposits</p></div>
+                            <div><h2>Direct Deposit</h2><p>Calls vault.deposit() with both tokens — most users should use Deposit (USDC-only)</p></div>
                             <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
                         </div>
                         <div class="vt-row">
@@ -362,7 +362,7 @@
                     <div class="calculator-panel reveal is-visible">
                         <div class="panel-heading">
                             <i class="simple-icon-energy" aria-hidden="true"></i>
-                            <div><h2>Swap</h2><p>Swap USDC to vltUSDC</p></div>
+                            <div><h2>Deposit</h2><p>Deposit USDC for vltUSDC — part is auto-swapped to VLT</p></div>
                             <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
                         </div>
                         <div class="vt-row">
@@ -382,7 +382,7 @@
                         <input type="hidden" id="zap-minvlt" value="0">
                         <input type="hidden" id="zap-minshares" value="0">
                         <div class="vt-actions">
-                            <button class="button primary" id="zap-go" type="button" disabled>Swap</button>
+                            <button class="button primary" id="zap-go" type="button" disabled>Deposit</button>
                             <button class="button ghost" id="zap-approve-usdc-p" type="button" disabled>Approve USDC</button>
                         </div>
                         <div class="vt-route" data-field="zap-route" style="margin-top:18px;"><div class="vt-route-note">Enter a USDC amount to see the route.</div></div>
@@ -409,26 +409,6 @@
                             <button class="button primary" id="red-go" type="button">Redeem</button>
                         </div>
                         <p class="calc-note" data-field="red-note">&nbsp;</p>
-                    </div>
-
-                    <!-- Compound -->
-                    <div class="calculator-panel reveal is-visible">
-                        <div class="panel-heading">
-                            <i class="simple-icon-refresh" aria-hidden="true"></i>
-                            <div><h2>Compound</h2><p>Auto-rebalance + reinvest. Caller earns 1% finder fee.</p></div>
-                            <button type="button" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
-                        </div>
-                        <div class="vt-actions"><button class="button primary" id="cmp-go" type="button">Compound</button></div>
-                        <div class="vt-kvs" style="margin-top:18px;">
-                            <div class="vt-kv"><span>keeper profitability</span><strong data-field="cmp-profit">…</strong></div>
-                            <div class="vt-kv"><span>accrued VLT (fees + retained)</span><strong data-field="cmp-vlt">…</strong></div>
-                            <div class="vt-kv"><span>accrued USDC (fees + retained)</span><strong data-field="cmp-usdc">…</strong></div>
-                            <div class="vt-kv"><span>claimable value</span><strong data-field="cmp-value">…</strong></div>
-                            <div class="vt-kv"><span>min to compound</span><strong data-field="cmp-min">…</strong></div>
-                            <div class="vt-kv"><span>finder reward (1% of fees)</span><strong data-field="cmp-reward">…</strong></div>
-                            <div class="vt-kv"><span>gas estimate</span><strong data-field="cmp-gas">…</strong></div>
-                        </div>
-                        <p class="calc-note" data-field="cmp-note">&nbsp;</p>
                     </div>
 
                 </div>
@@ -497,15 +477,15 @@
                 <div class="vt-mpane" id="mset-approvals">
                     <p style="opacity:.65;font-size:.85rem;margin:0 0 16px">One-time token allowances the vault/helper need to move your tokens. Approve grants MAX; toggling again revokes (sets 0).</p>
                     <div class="vt-approval-row">
-                        <div class="vt-approval-label"><strong>VLT → Vault</strong><span>required for Deposit</span></div>
+                        <div class="vt-approval-label"><strong>VLT → Vault</strong><span>required for Direct Deposit (Advanced)</span></div>
                         <button class="button ghost" id="dep-approve-vlt" type="button" disabled>Approve VLT</button>
                     </div>
                     <div class="vt-approval-row">
-                        <div class="vt-approval-label"><strong>USDC → Vault</strong><span>required for Deposit</span></div>
+                        <div class="vt-approval-label"><strong>USDC → Vault</strong><span>required for Direct Deposit (Advanced)</span></div>
                         <button class="button ghost" id="dep-approve-usdc" type="button" disabled>Approve USDC</button>
                     </div>
                     <div class="vt-approval-row">
-                        <div class="vt-approval-label"><strong>USDC → ZapHelper</strong><span>required for Swap</span></div>
+                        <div class="vt-approval-label"><strong>USDC → ZapHelper</strong><span>required for Deposit</span></div>
                         <button class="button ghost" id="zap-approve-usdc" type="button" disabled>Approve USDC</button>
                     </div>
                 </div>

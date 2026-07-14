@@ -185,12 +185,6 @@ var VAULT_ABI = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "finder",
-        "type": "address"
-      },
-      {
         "indexed": false,
         "internalType": "uint256",
         "name": "vltFees",
@@ -200,18 +194,6 @@ var VAULT_ABI = [
         "indexed": false,
         "internalType": "uint256",
         "name": "usdcFees",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "vltFinder",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "usdcFinder",
         "type": "uint256"
       },
       {
@@ -350,20 +332,7 @@ var VAULT_ABI = [
   },
   {
     "inputs": [],
-    "name": "FINDER_FEE_BPS",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "MIN_COMPOUND_VALUE_USDC",
+    "name": "AUTO_COMPOUND_MIN_USDC",
     "outputs": [
       {
         "internalType": "uint256",
@@ -439,19 +408,6 @@ var VAULT_ABI = [
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "compound",
-    "outputs": [
-      {
-        "internalType": "uint128",
-        "name": "liquidityAdded",
-        "type": "uint128"
-      }
-    ],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

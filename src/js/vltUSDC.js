@@ -29,7 +29,7 @@
   var ROUTE_FEE_BPS = 3500; // ~V3 0.05% + V2 0.30%, used to size the balanced zap split
   // Minimal PoolManager ABI — read the live pool price (slot0.sqrtPriceX96) via extsload.
   var POOLMANAGER_ABI = [{ name: "extsload", stateMutability: "view", type: "function", inputs: [{ type: "bytes32", name: "slot" }], outputs: [{ type: "bytes32", name: "" }] }];
-  // For pulling real mainnet gas/ETH prices into the compound profitability estimate.
+  // For pulling real mainnet gas/ETH prices into the ≈$ balance readouts.
   var CHAINLINK_ETH_USD = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"; // mainnet ETH/USD feed (8 dec)
   var AGGREGATOR_ABI = [{ name: "latestAnswer", inputs: [], outputs: [{ type: "int256", name: "" }], stateMutability: "view", type: "function" }];
   var PUBLIC_MAINNET_RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://cloudflare-eth.com"];
@@ -64,8 +64,6 @@
     poolMgrAddr: null,
     slippageBps: 100, // zap min-out tolerance; default 1%
     zapSeq: 0, // sequence guard for the async zap quote
-    cmpGas: null, // cached compound() gas estimate (units)
-    cmpFeesUsdc: "0", // cached value (USDC raw) of pending pool fees (finder-reward base)
     gwei: 0, ethUsd: 0, // live mainnet gas (gwei) + ETH/USD (0 = not fetched yet), set by fetchMainnetPrices()
     useRoutingApi: false, // build zap swapData with the in-browser Uniswap SDK instead of built-in
   };
@@ -231,7 +229,7 @@
       setField("vs-supply", compact(supply));
       var per = (Number(supply) > 0) ? (Number(liq) / (Number(supply) / Math.pow(10, sdec))) : 0;
       setField("vs-pershare", per ? (sdec === 0 ? per.toFixed(4) : per.toExponential(4)) : "0");
-      // Lifetime fee growth % from L/share (price-neutral, net of finder, 0 at launch). All three APRs
+      // Lifetime fee growth % from L/share (price-neutral, 0 at launch). All three APRs
       // come straight from the on-chain feeApr() view — integer source of truth, no client annualization.
       try {
         var aprPct = function (bps) { return Number(bps) > 0 ? "~" + (Number(bps) / 100).toFixed(1) + "%" : "—"; };
@@ -263,7 +261,7 @@
           setField("vs-tvl", "$" + localize(posUsd.toFixed(2)));
         } else { state.navPerShareUsdc = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
       } catch (e) { state.navPerShareUsdc = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
-      await refreshCompound(); // accrued fee balance + min-value gate for the compound panel
+      await refreshClaimable(); // claimable value + auto-compound trigger for the Stats panel
     } catch (e) {
       console.error("[vault-test] dashboard read error:", e); // full object/stack in console
       logEntry("dashboard read failed: " + errText(e), "err");
@@ -550,7 +548,7 @@
       setField("zap-out", (toBN(shares).gtn(0) ? fmtT(shares, state.tokens.sharesDec) + " vltUSDC " : "") + "≈ $" + totalUsd.toFixed(2));
     } catch (e) { setField("zap-out", ""); }
   }
-  // Render the zap route as a key/value table (like the compound stats) plus an optional status/error
+  // Render the zap route as a key/value table (like the stats grid) plus an optional status/error
   // note line. rows = array of [key, valueHtml]; note = status string; warn = tint the note.
   function setRoute(rows, note, warn) {
     var el = $f("zap-route"); if (!el) return;
@@ -940,66 +938,20 @@
         state.write.vault.methods.redeem(sharesRaw, state.account).send({ from: state.account }));
     } catch (e) { note("red-note", errText(e), "vt-warn"); }
   }
-  async function doCompound() {
-    try {
-      requireConnected();
-      // Zero-arg: the vault auto-rebalances internally. No-ops on-chain if below the min value.
-      var c = await state.read.vault.methods.compoundClaimable().call();
-      var valueUsdc = c.valueUsdc || c[2];
-      var min = await state.read.vault.methods.MIN_COMPOUND_VALUE_USDC().call();
-      if (web3.utils.toBN(valueUsdc).lt(web3.utils.toBN(min))) {
-        note("cmp-note", "claimable " + formatUnits(valueUsdc, 6, 2) + " < min " + formatUnits(min, 6, 2) + " USDC — compound() would no-op", "vt-warn");
-        return;
-      }
-      await runTx("compound()", state.write.vault.methods.compound().send({ from: state.account }));
-    } catch (e) { note("cmp-note", errText(e), "vt-warn"); }
-  }
-  // Read what the next compound() would harvest + reinvest (no state change), estimate its gas,
-  // and show the keeper's profitability. The expensive reads happen here; the gas/ETH-price math
-  // is synchronous in renderCompoundProfit() so editing the assumptions doesn't re-hit the chain.
-  async function refreshCompound() {
+  // Read what the next triggering deposit would auto-compound (retained balances + pending pool
+  // fees) and the fixed trigger, for the Stats panel. There is no public compound() — a deposit
+  // whose claimable value is at or above AUTO_COMPOUND_MIN_USDC runs the compound leg itself;
+  // 100% of the harvest reinvests for holders (no fee of any kind).
+  async function refreshClaimable() {
     if (!state.read.vault) return;
     try {
       var c = await state.read.vault.methods.compoundClaimable().call();
-      // Token-named returns (vltAmount, usdcAmount, ...) — no currency-order mapping needed.
-      var vltRaw = c.vltAmount || c[0], usdcRaw = c.usdcAmount || c[1];
-      var valueUsdc = c.valueUsdc || c[2], feesUsdc = c.feesValueUsdc || c[3];
-      var min = await state.read.vault.methods.MIN_COMPOUND_VALUE_USDC().call();
-      setField("cmp-vlt", formatUnits(vltRaw, state.tokens.vltDec, 6));
-      setField("cmp-usdc", formatUnits(usdcRaw, state.tokens.usdcDec, 4));
+      var valueUsdc = c.valueUsdc || c[2];
+      var min = await state.read.vault.methods.AUTO_COMPOUND_MIN_USDC().call();
       var above = web3.utils.toBN(valueUsdc).gte(web3.utils.toBN(min));
-      setField("cmp-value", formatUnits(valueUsdc, 6, 2) + " USDC " + (above ? "✓ will compound" : "· below min (no-op)"));
-      setField("cmp-min", formatUnits(min, 6, 2) + " USDC");
-      // Finder reward (keeper revenue) = FINDER_FEE_BPS (1%) of the PENDING-FEE value only.
-      state.cmpFeesUsdc = String(feesUsdc);
-      setField("cmp-reward", (Number(formatUnits(feesUsdc, 6, 6)) / 100).toFixed(4) + " USDC");
-      // Gas units for the current action (no-op below the gate, full rebalance above). Needs a
-      // sender; compound() never reverts, so estimateGas succeeds either way. Use the READ contract
-      // (estimateGas is a node read) so this populates on the first refresh right after connect —
-      // write contracts are (re)built after refreshDashboard() in main(), so gating on state.write
-      // here left the estimate blank until the next 60s refresh.
-      state.cmpGas = null;
-      if (state.account) {
-        try { state.cmpGas = Number(await state.read.vault.methods.compound().estimateGas({ from: state.account })); }
-        catch (e) { state.cmpGas = null; }
-      }
-      renderCompoundProfit();
+      setField("vs-claimable", formatUnits(valueUsdc, 6, 2) + " USDC" + (above ? " ✓ next deposit compounds" : ""));
+      setField("vs-trigger", formatUnits(min, 6, 0) + " USDC");
     } catch (e) { console.error("[vault-test] compoundClaimable read error:", e); }
-  }
-  // Synchronous: combine the cached gas estimate + fee value with the live mainnet gas/ETH prices
-  // (fetched into state by fetchMainnetPrices) into a keeper profit/loss. USDC ≈ $1.
-  function renderCompoundProfit() {
-    var gas = state.cmpGas;
-    var gwei = state.gwei || 0;
-    var ethUsd = state.ethUsd || 0;
-    if (gas == null) { setField("cmp-gas", "connect a wallet to estimate"); setField("cmp-profit", "—"); return; }
-    var gasCostUsd = gas * gwei * 1e-9 * ethUsd;
-    setField("cmp-gas", gas.toLocaleString() + " gas · ~$" + gasCostUsd.toFixed(2) + " @ " + gwei + " gwei, $" + ethUsd + "/ETH");
-    var rewardUsd = Number(formatUnits(state.cmpFeesUsdc || "0", 6, 6)) / 100;
-    var net = rewardUsd - gasCostUsd;
-    var el = $f("cmp-profit"); if (!el) return;
-    el.textContent = (net >= 0 ? "✓ profitable +$" : "✗ unprofitable −$") + Math.abs(net).toFixed(2) +
-      "  (reward $" + rewardUsd.toFixed(2) + " − gas $" + gasCostUsd.toFixed(2) + ")";
   }
 
   // Pull real mainnet gas + ETH prices into the assumption inputs. Gas: a live public RPC
@@ -1052,7 +1004,6 @@
     return null;
   }
   async function fetchMainnetPrices(quiet) {
-    if (!quiet) note("cmp-note", "fetching mainnet gas + ETH price…");
     var msgs = [];
     var g = await mainnetGasGwei();
     if (g) {
@@ -1065,8 +1016,7 @@
       msgs.push("ETH $" + state.ethUsd + " (" + eth.src + ")");
     } else { msgs.push("ETH fetch failed — kept previous"); }
     renderBalanceUsd(); // ETH ≈$ now that a live price landed (also refreshes VLT/shares ≈$)
-    renderCompoundProfit();
-    if (!quiet) note("cmp-note", msgs.join(" · "));
+    if (!quiet) logEntry("mainnet prices: " + msgs.join(" · "), "ok");
   }
 
   // ── fund (fork cheats, via HTTP provider) ───────────────────────────────────
@@ -1140,9 +1090,8 @@
   function setupTabs() {
     var groups = {
       "pane-stats": ["vs-refresh"],
-      "pane-swap": ["zap-go", "red-go"],
-      "pane-deposit": ["dep-go"],
-      "pane-compound": ["cmp-go"],
+      "pane-deposit": ["zap-go", "red-go"],
+      "pane-advanced": ["dep-go"],
       "pane-config": ["cfg-save", "fund-eth-go"],
     };
     Object.keys(groups).forEach(function (paneId) {
@@ -1311,7 +1260,6 @@
     $("#zap-approve-usdc, #zap-approve-usdc-p").on("click", function () { toggleApproval(APPROVALS[2]); });
     $("#zap-go").on("click", doZapDeposit);
     $("#red-go").on("click", doRedeem);
-    $("#cmp-go").on("click", doCompound);
     $("#cfg-routing-api").on("change", function () {
       state.useRoutingApi = this.checked;
       try { localStorage.setItem(ROUTE_KEY, this.checked ? "1" : "0"); } catch (e) {}
