@@ -15,6 +15,8 @@
   var CFG_KEY = "vaultTestConfig";
   var SLIP_KEY = "vaultTestSlippageBps";
   var ROUTE_KEY = "vaultTestUseSdkRoute";
+  var ADV_KEY = "vaultTestAdvDeposits"; // Settings → Advanced: "1" = Advanced Deposits on (default off)
+  var LOG_KEY = "vaultTestShowLog";     // Settings → Advanced: "1" = Activity log panel shown (default off)
   // Per-chain settings. `dev` chains (a local fork) expose the Config + Fork-Cheats tab and honor a saved
   // localStorage override; production chains bake the read RPC + deployed addresses and hide the dev tools.
   // `rpc` is the read endpoint used BEFORE a wallet connects; the wallet's provider takes over once connected.
@@ -64,8 +66,11 @@
     poolMgrAddr: null,
     slippageBps: 100, // zap min-out tolerance; default 1%
     zapSeq: 0, // sequence guard for the async zap quote
+    zapExpShares: null, // exact shares from the last successful zap static call (else NAV estimate)
     gwei: 0, ethUsd: 0, // live mainnet gas (gwei) + ETH/USD (0 = not fetched yet), set by fetchMainnetPrices()
     useRoutingApi: false, // build zap swapData with the in-browser Uniswap SDK instead of built-in
+    advDeposits: false, // Settings → Advanced: show the Advanced (two-token deposit) tab. Off by default.
+    showLog: false, // Settings → Advanced: show the Activity log panel. Off by default.
   };
 
   // ── helpers ────────────────────────────────────────────────────────────────
@@ -503,6 +508,13 @@
     if (numVal("#zap-usdc") > bal) $("#zap-usdc").val(trim(bal));
   }
   function onZapTotal(reconcile) {
+    // New amount ⇒ any cached exact quote is stale; drop it so the recv line falls back to the
+    // NAV estimate until the (debounced) re-quote lands rather than showing the old amount's figure.
+    // Bump the sequence too: an IN-FLIGHT quote for the old amount would otherwise still pass its
+    // own guard (nothing else increments until the debounced re-quote starts 450ms later) and
+    // repopulate the cache / route table with the previous amount's numbers.
+    state.zapExpShares = null;
+    state.zapSeq++;
     if (reconcile) clampZapTotal();
     fillZapSwap();
     syncZapSliderFromUsdc();
@@ -538,13 +550,15 @@
   }
   var _zapPrevTimer;
   function zapPreviewDebounced() { clearTimeout(_zapPrevTimer); _zapPrevTimer = setTimeout(zapPreview, 350); }
-  // Approval-free "you receive ≈ <shares> vltUSDC" estimate (≈ all the input USDC ends up deployed).
+  // "you receive ≈ <shares> vltUSDC" — the exact figure from refreshZapQuote()'s static call once
+  // it lands (state.zapExpShares), else the approval-free NAV estimate (≈ all the input USDC ends
+  // up deployed) so the line is never blank pre-approval or between keystroke and quote.
   function zapPreview() {
     try {
       var totalRaw = parseUnits($("#zap-usdc").val(), state.tokens.usdcDec);
       if (toBN(totalRaw).lten(0)) { setField("zap-out", ""); return; }
       var totalUsd = Number(formatUnits(totalRaw, state.tokens.usdcDec));
-      var shares = estSharesFromUsd(totalUsd);
+      var shares = state.zapExpShares || estSharesFromUsd(totalUsd);
       setField("zap-out", (toBN(shares).gtn(0) ? fmtT(shares, state.tokens.sharesDec) + " vltUSDC " : "") + "≈ $" + totalUsd.toFixed(2));
     } catch (e) { setField("zap-out", ""); }
   }
@@ -567,6 +581,7 @@
   function refreshZapQuoteDebounced() { clearTimeout(_zapTimer); _zapTimer = setTimeout(refreshZapQuote, 450); }
   async function refreshZapQuote(depth) {
     var seq = ++state.zapSeq;
+    state.zapExpShares = null; // invalid until this run proves a fresh figure (set on success below)
     var usdcDec = state.tokens.usdcDec, vltDec = state.tokens.vltDec;
     var totalRaw, swapRaw;
     try { totalRaw = parseUnits($("#zap-usdc").val(), usdcDec); swapRaw = parseUnits($("#zap-swap").val(), usdcDec); }
@@ -584,7 +599,7 @@
     // Rows shared by every state: route, the swap/keep split, and the live pool price.
     function baseRows(routeStr) {
       var rows = [["route", routeStr], ["split", "swap " + fmtU(swapRaw) + " · keep " + fmtU(usdcForLp) + " USDC"]];
-      if (state.priceUsdcPerVlt) rows.push(["pool price", "~$" + state.priceUsdcPerVlt.toFixed(4) + "/VLT"]);
+      if (state.priceUsdcPerVlt) rows.push(["price", "~$" + state.priceUsdcPerVlt.toFixed(4) + "/VLT"]);
       return rows;
     }
 
@@ -596,7 +611,7 @@
       sd = await getZapSwapData(swapRaw);
       if (seq !== state.zapSeq) return;
       swapData = sd.data;
-      routeStr = (sd.route || BUILTIN_ROUTE) + " · " + sd.src;
+      routeStr = sd.route || BUILTIN_ROUTE;
     } catch (e) {
       if (seq !== state.zapSeq) return;
       setRoute(baseRows(routeText), "route build failed: " + errText(e), true);
@@ -607,6 +622,7 @@
     if (!state.account || !state.write.zap || !(APPROVALS[2] && APPROVALS[2].on)) {
       $("#zap-minvlt").val("0"); $("#zap-minshares").val("0");
       setRoute(baseRows(routeStr), "approve USDC → ZapHelper to compute minimums (sent with min 0 until then)");
+      zapPreview(); // no exact figure available — fall the recv line back to the NAV estimate
       return;
     }
     setRoute(baseRows(routeStr), "quoting… (slippage " + slipPct + "%)");
@@ -637,20 +653,24 @@
       var minVlt = withSlippage(expVlt), minShares = withSlippage(expShares);
       $("#zap-minvlt").val(formatUnits(minVlt, vltDec, vltDec));
       $("#zap-minshares").val(formatUnits(minShares, sharesDec, sharesDec));
+      // The table shows what the tx SENDS/ENFORCES; the expected output lives on the "you receive ≈"
+      // line above (upgraded below from the NAV estimate to this exact static-call figure).
+      state.zapExpShares = expShares;
       setRoute(baseRows(routeStr).concat([
-        ["quote", "~" + fmtT(expVlt, vltDec) + " VLT · ~" + fmtT(expShares, sharesDec) + " shares"],
-        ["min VLT out", fmtT(minVlt, vltDec)],
-        ["min shares", fmtT(minShares, sharesDec)],
+        ["minimum VLT", fmtT(minVlt, vltDec) + " VLT"],
+        ["minimum vltUSDC", fmtT(minShares, sharesDec) + " vltUSDC"],
         ["slippage", slipPct + "%"],
       ]));
+      zapPreview(); // undebounced: refresh the recv line now that the exact figure is known
     } catch (e) {
       if (seq !== state.zapSeq) return;
       $("#zap-minvlt").val("0"); $("#zap-minshares").val("0");
       setRoute(baseRows(routeStr), "quote failed: " + errText(e), true);
+      zapPreview(); // no exact figure available — fall the recv line back to the NAV estimate
     }
   }
 
-  // settings modal (Slippage | Approvals) -------------------------------------
+  // settings modal (Slippage | Approvals | Advanced) --------------------------
   function setSettingsTab(tab) {
     $(".vt-mtab").each(function () { $(this).toggleClass("active", $(this).data("stab") === tab); });
     $(".vt-mpane").each(function () { this.classList.toggle("active", this.id === "mset-" + tab); });
@@ -764,8 +784,21 @@
     var $b = $(sel);
     if ($b.length) $b.prop("disabled", !ok).attr("title", ok ? "" : "approve the required token(s) first");
   }
+  // Which approval rows the Settings list shows. The ZapHelper row backs the default (USDC-only)
+  // Deposit flow, so it's always there. The two vault approvals are only reachable from the
+  // Advanced tab — hide them unless Advanced Deposits is on, EXCEPT while an allowance is still
+  // live (`a.on`): opting out after approving must never strand a standing allowance with no way
+  // to revoke it. Sync (uses the last-read `a.on`) so the settings toggle can call it directly.
+  function renderApprovalRows() {
+    for (var i = 0; i < APPROVALS.length; i++) {
+      var a = APPROVALS[i];
+      if (a.target !== "vault") continue;
+      $(a.btn).closest(".vt-approval-row").toggle(!!(state.advDeposits || a.on));
+    }
+  }
   async function renderAllApprovals() {
     for (var i = 0; i < APPROVALS.length; i++) await renderApproval(APPROVALS[i]);
+    renderApprovalRows(); // a.on is fresh now — a live vault allowance keeps its row (revocable)
     var depOk = APPROVALS[0].on && APPROVALS[1].on; // VLT + USDC → vault
     var zapOk = APPROVALS[2].on;                    // USDC → ZapHelper
     gateAction("#dep-go", depOk);
@@ -951,6 +984,11 @@
       var above = web3.utils.toBN(valueUsdc).gte(web3.utils.toBN(min));
       setField("vs-claimable", formatUnits(valueUsdc, 6, 2) + " USDC" + (above ? " ✓ next deposit compounds" : ""));
       setField("vs-trigger", formatUnits(min, 6, 0) + " USDC");
+      // Lifetime realized fees (on-chain counters; always == Σ Compound + Σ FeesRetained events).
+      var fVlt = await state.read.vault.methods.totalFeesVlt().call();
+      var fUsdc = await state.read.vault.methods.totalFeesUsdc().call();
+      setField("vs-fees", localize(formatUnits(String(fVlt), state.tokens.vltDec, 2)) + " VLT | " +
+        localize(formatUnits(String(fUsdc), state.tokens.usdcDec, 2)) + " USDC");
     } catch (e) { console.error("[vault-test] compoundClaimable read error:", e); }
   }
 
@@ -1063,6 +1101,17 @@
     if (app) app.style.display = connected ? "" : "none";
     // Once connected, drop the hero copy to reclaim vertical space (restored on disconnect).
     if (hero) hero.style.display = connected ? "none" : "";
+    // The vltUSDC Stats panel is SHARED between the two states: while disconnected it sits in the
+    // gate's left column (populated via the HTTP read RPC — the boot path already runs
+    // refreshDashboard() pre-connect); once connected it moves back into the Stats tab. Same DOM
+    // node either way, so data-field updates keep working regardless of where it lives.
+    // (#vt-gate's own display toggle above covers visibility.)
+    var pub = document.getElementById("vt-public-stats");
+    var panel = document.getElementById("vault-stats");
+    if (pub && panel) {
+      var host = connected ? document.getElementById("pane-stats") : pub;
+      if (host && panel.parentNode !== host) host.appendChild(panel);
+    }
   }
 
   // Show/hide dev-only affordances based on the active chain: the Config tab (Configuration + Fork
@@ -1083,14 +1132,52 @@
       : "vltUSDC · auto-compounding Uniswap V4 liquidity vault. Non-custodial — no admin, no pause.";
   }
 
+  // Settings → Advanced: both toggles are opt-in and OFF unless localStorage says otherwise, so the
+  // default UI is just the USDC-only Deposit/Withdraw flows.
+  //   • Advanced Deposits → the Advanced tab (raw two-token vault.deposit()) + its vault approvals.
+  //   • Activity Log      → the tx/read/error trail panel (everything is mirrored to the browser
+  //                         console either way, so hiding it loses nothing).
+  // Tab show/hide follows the same don't-strand-the-active-tab pattern as applyChainUI().
+  // Both buttons are state-dependent like the approval toggles: the label states the action.
+  function applyAdvancedUI() {
+    var tab = document.querySelector('.vt-tab[data-tab="advanced"]');
+    if (tab) tab.style.display = state.advDeposits ? "" : "none";
+    if (!state.advDeposits) {
+      var active = document.querySelector(".vt-tab.active");
+      if (active && active.getAttribute("data-tab") === "advanced") {
+        var stats = document.querySelector('.vt-tab[data-tab="stats"]');
+        if (stats) stats.click(); // don't leave the now-hidden Advanced tab selected
+      }
+    }
+    $("#adv-deposits-toggle").text(state.advDeposits ? "Disable" : "Enable");
+    renderApprovalRows(); // the vault approvals follow the setting (a live allowance keeps its row)
+
+    var logPanel = document.getElementById("txlog-panel");
+    if (logPanel) logPanel.style.display = state.showLog ? "" : "none";
+    $("#show-log-toggle").text(state.showLog ? "Hide" : "Show");
+  }
+  function toggleAdvDeposits() {
+    state.advDeposits = !state.advDeposits;
+    try { localStorage.setItem(ADV_KEY, state.advDeposits ? "1" : "0"); } catch (e) {}
+    applyAdvancedUI();
+    logEntry("advanced deposits " + (state.advDeposits ? "enabled" : "disabled"), "ok");
+  }
+  function toggleActivityLog() {
+    state.showLog = !state.showLog;
+    try { localStorage.setItem(LOG_KEY, state.showLog ? "1" : "0"); } catch (e) {}
+    applyAdvancedUI();
+  }
+
   // Consolidate the panels into the tab control: move each panel (by a known inner id) into its pane,
   // drop the now-empty grid, then wire tab switching + remember the active tab. Runs once on load
   // while #app is still gated/hidden, so there's no visible reflow.
   var TAB_KEY = "vaultTestTab";
   function setupTabs() {
     var groups = {
-      "pane-stats": ["vs-refresh"],
-      "pane-deposit": ["zap-go", "red-go"],
+      "pane-stats": ["vault-stats"],
+      "pane-your-stats": ["your-stats"],
+      "pane-deposit": ["zap-go"],
+      "pane-withdraw": ["red-go"],
       "pane-advanced": ["dep-go"],
       "pane-config": ["cfg-save", "fund-eth-go"],
     };
@@ -1190,21 +1277,12 @@
     });
   }
 
-  // Pull fresh on-chain data for every panel — wired to each panel's refresh button. Re-reads the
-  // dashboard (stats, price, compound claimable, fee APR) + balances, then recomputes the derived
-  // previews so the visible panels reflect the fresh state.
-  function refreshOnchain(btn) {
-    spinDuring(btn, refreshDashboard().then(function () {
-      refreshBalances();
-      onZapTotal(false);
-      depositPreview();
-      redeemPreviewDebounced();
-    }));
-  }
-
-  // Reload just the 6 "Your Stats" cards: network + account identity, then the ETH/USDC/VLT/shares
-  // balances (refreshBalances also re-renders approvals + balance chips). Lighter than refreshOnchain.
-  function refreshPersonalStats(btn) {
+  // The page's ONE refresh (tab row, next to the settings gear): pull everything on-chain the page
+  // shows, then recompute the derived previews. Order matters — the dashboard read caches the pool
+  // price + NAV/share that refreshBalances()'s ≈$ readouts and the previews depend on. Covers both
+  // "Your Stats" (identity + balances; refreshBalances also re-renders approvals + balance chips)
+  // and the panels (vault stats, price, claimable, fee APR), so no panel needs its own button.
+  function refreshAll(btn) {
     spinDuring(btn, (async function () {
       if (window.web3 && state.account) {
         try {
@@ -1214,14 +1292,22 @@
           setField("account", short(state.account));
         } catch (e) {}
       }
+      await refreshDashboard();
       await refreshBalances();
+      onZapTotal(false);
+      depositPreview();
+      redeemPreviewDebounced();
     })());
   }
 
   $(function () {
     loadConfig();
     setupTabs(); // consolidate panels into the tab control (runs while #app is gated/hidden)
+    applyGate(); // pre-connect: surface the shared vltUSDC Stats panel beside the connect card
     applyChainUI(); // hide the dev Config tab + set the footer for the pre-connect context
+    state.advDeposits = localStorage.getItem(ADV_KEY) === "1"; // default OFF (anything unsaved → false)
+    state.showLog = localStorage.getItem(LOG_KEY) === "1";     // default OFF (anything unsaved → false)
+    applyAdvancedUI(); // hide the Advanced tab + log unless opted in (also un-strands a saved "advanced" tab)
     state.slippageBps = parseInt(localStorage.getItem(SLIP_KEY) || "100", 10) || 100;
     state.useRoutingApi = (localStorage.getItem(ROUTE_KEY) || "1") === "1"; // default ON (Uniswap SDK route)
     $("#cfg-routing-api").prop("checked", state.useRoutingApi);
@@ -1248,12 +1334,12 @@
     $("#slip-input").on("input", function () { $("#slip-range").val($(this).val()); paintRange(document.getElementById("slip-range")); });
     $(".vt-slip-presets [data-slip]").on("click", function () { var v = $(this).data("slip"); $("#slip-range").val(v); $("#slip-input").val(v); paintRange(document.getElementById("slip-range")); });
     $("#slip-save").on("click", saveSlippage);
+    $("#adv-deposits-toggle").on("click", toggleAdvDeposits); // immediate, like the approval toggles
+    $("#show-log-toggle").on("click", toggleActivityLog);
 
     $("#cfg-save").on("click", reload);
     // Normalized per-panel refresh (delegated — buttons get moved into tab panes by setupTabs()).
-    // #ys-refresh shares the styling but reloads only the 6 personal stats, so it's excluded here.
-    $(document).on("click", ".vt-refresh:not(#ys-refresh):not(#settings-open)", function () { refreshOnchain(this); });
-    $("#ys-refresh").on("click", function () { refreshPersonalStats(this); });
+    $("#refresh-all").on("click", function () { refreshAll(this); });
     $("#dep-approve-vlt, #dep-approve-vlt-p").on("click", function () { toggleApproval(APPROVALS[0]); });
     $("#dep-approve-usdc, #dep-approve-usdc-p").on("click", function () { toggleApproval(APPROVALS[1]); });
     $("#dep-go").on("click", doDeposit);
