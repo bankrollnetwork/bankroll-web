@@ -93,6 +93,10 @@
            override the color to white and set 0.82 opacity (0.82 × 0.85 ≈ 0.70) to escape the label's dim. */
         .vt-bal { font-weight: 400; font-size: 0.85rem; opacity: 0.82; color: var(--white); cursor: pointer; text-transform: none; letter-spacing: 0; white-space: nowrap; }
         .vt-bal:hover { opacity: 1; text-decoration: underline; }
+        /* Static balance readout (the Swap "To" side): shows the held balance of the output token
+           but isn't clickable — you don't "max" an output. Kills the pointer + hover affordance. */
+        .vt-bal.is-static { cursor: default; }
+        .vt-bal.is-static:hover { opacity: 0.82; text-decoration: none; }
         .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
         .vt-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; font-size: 0.85rem; opacity: 0.9; cursor: pointer; }
         .vt-check input { width: auto; margin: 0; }
@@ -342,7 +346,7 @@
                             <button class="button ghost small" id="swp-flip" type="button" title="flip direction" aria-label="Flip direction">&#8645;</button>
                         </div>
                         <div class="vt-row">
-                            <label for="swp-out-amount">To</label>
+                            <label for="swp-out-amount">To <span class="vt-bal is-static" id="swp-out-bal" data-token="usdc" title="your current balance">…</span></label>
                             <div style="display:flex; gap:8px;">
                                 <input id="swp-out-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
                                 <select id="swp-out" style="flex:0 0 110px; width:auto;">

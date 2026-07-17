@@ -624,12 +624,18 @@
     state._swpPrevIn = $("#swp-in").val(); state._swpPrevOut = $("#swp-out").val();
     renderSwapChip(); renderSwapAction(); syncSwapSliderFromAmount(); refreshSwapQuoteDebounced();
   }
-  // The balance chip follows the selected input token; ETH max keeps a gas reserve back.
+  // The balance chips follow the selected tokens: the From chip is the clickable spendable-max
+  // (ETH keeps a gas reserve back); the To chip is a static readout of the output token's balance.
   function renderSwapChip() {
-    var tk = swapTokens().tin.toLowerCase();
+    var t = swapTokens();
+    var tin = t.tin.toLowerCase();
     var chip = $("#swp-bal");
-    chip.attr("data-token", tk);
-    chip.text(formatUnits(swapMaxRaw(tk), decOf(tk), 4) + " · max");
+    chip.attr("data-token", tin);
+    chip.text(formatUnits(swapMaxRaw(tin), decOf(tin), 4) + " · max");
+    var tout = t.tout.toLowerCase();
+    var oChip = $("#swp-out-bal");
+    oChip.attr("data-token", tout);
+    oChip.text("balance " + formatUnits(balRaw(tout), decOf(tout), 4));
   }
   function swapMaxRaw(tk) {
     var b = toBN(balRaw(tk));
@@ -720,11 +726,11 @@
 
   // balance chips ------------------------------------------------------------
   function renderBalanceChips() {
-    $(".vt-bal").not("#swp-bal").each(function () {
+    $(".vt-bal").not("#swp-bal, #swp-out-bal").each(function () {
       var tk = $(this).data("token");
       $(this).text(formatUnits(balRaw(tk), decOf(tk), 4) + " · max");
     });
-    renderSwapChip(); // the swap chip owns its own render (token follows the select; ETH reserves gas)
+    renderSwapChip(); // the swap chips own their own render (tokens follow the selects; ETH reserves gas)
   }
   function onBalChip() {
     // attr(), not data(): the swap chip's data-token changes with the token select, and jQuery's
@@ -1593,7 +1599,7 @@
     });
 
     // balance chips (click = use max), deposit estimator, zap auto-quote, slippage modal
-    $(".vt-bal").on("click", onBalChip);
+    $(".vt-bal").not("#swp-out-bal").on("click", onBalChip); // the To readout is static (no max on an output)
     $("#dep-vlt").on("input", function () { onDepInput("vlt", false); }).on("change", function () { onDepInput("vlt", true); });
     $("#dep-usdc").on("input", function () { onDepInput("usdc", false); }).on("change", function () { onDepInput("usdc", true); });
     $("#dep-vlt-slider").on("input", function () { onDepSlider("vlt"); });
