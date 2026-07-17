@@ -635,7 +635,7 @@
     var tout = t.tout.toLowerCase();
     var oChip = $("#swp-out-bal");
     oChip.attr("data-token", tout);
-    oChip.text("balance " + formatUnits(balRaw(tout), decOf(tout), 4));
+    oChip.text(formatUnits(balRaw(tout), decOf(tout), 4));
   }
   function swapMaxRaw(tk) {
     var b = toBN(balRaw(tk));
