@@ -79,6 +79,9 @@
             background: rgba(255,255,255,0.04); color: inherit; font: inherit;
         }
         .vt-row input[readonly] { opacity: 0.6; }
+        /* Amount boxes: right-aligned contents (mobile right-thumb ergonomics). Scoped to the
+           decimal-keypad inputs so address/URL fields keep normal alignment. */
+        input[inputmode="decimal"] { text-align: right; }
         /* "you receive ≈ <value>" — right-aligned under the input, only rendered when there's data. */
         .vt-recv { text-align: right; font-size: 0.85rem; margin-top: 6px; }
         .vt-recv > span:first-child { font-weight: 700; opacity: 0.85; }
@@ -327,27 +330,28 @@
                                 <span class="vt-hint" data-field="swp-pct" style="white-space:nowrap">0%</span>
                             </div>
                             <div style="display:flex; gap:8px;">
+                                <input id="swp-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
                                 <select id="swp-in" style="flex:0 0 110px; width:auto;">
                                     <option value="ETH" selected>ETH</option>
                                     <option value="USDC">USDC</option>
                                     <option value="VLT">VLT</option>
                                 </select>
-                                <input id="swp-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
                             </div>
                         </div>
                         <div class="vt-actions" style="margin:0 0 10px; justify-content:center;">
                             <button class="button ghost small" id="swp-flip" type="button" title="flip direction" aria-label="Flip direction">&#8645;</button>
                         </div>
                         <div class="vt-row">
-                            <label for="swp-out">To</label>
-                            <div style="display:flex; gap:8px; align-items:center;">
+                            <label for="swp-out-amount">To <span class="vt-hint">type either side — the other is estimated</span></label>
+                            <div style="display:flex; gap:8px;">
+                                <input id="swp-out-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
                                 <select id="swp-out" style="flex:0 0 110px; width:auto;">
                                     <option value="ETH">ETH</option>
                                     <option value="USDC" selected>USDC</option>
                                     <option value="VLT">VLT</option>
                                 </select>
-                                <div class="vt-recv" style="flex:1; margin:0; text-align:right;"><span>you receive ≈</span> <span data-field="swp-out-est"></span></div>
                             </div>
+                            <div class="vt-recv"><span></span> <span data-field="swp-out-est"></span></div>
                         </div>
                         <div class="vt-actions">
                             <button class="button primary" id="swp-go" type="button" disabled>Swap</button>
@@ -381,15 +385,15 @@
                         </div>
                         <div class="vt-fields">
                             <div class="vt-field">
-                                <div class="vt-row"><label for="fund-eth">Set ETH balance</label><input id="fund-eth" type="text" value="100"></div>
+                                <div class="vt-row"><label for="fund-eth">Set ETH balance</label><input id="fund-eth" type="text" value="100" inputmode="decimal"></div>
                                 <button class="button primary" id="fund-eth-go" type="button">Set ETH</button>
                             </div>
                             <div class="vt-field">
-                                <div class="vt-row"><label for="fund-usdc">Set USDC balance</label><input id="fund-usdc" type="text" value="50000"></div>
+                                <div class="vt-row"><label for="fund-usdc">Set USDC balance</label><input id="fund-usdc" type="text" value="50000" inputmode="decimal"></div>
                                 <button class="button primary" id="fund-usdc-go" type="button">Set USDC</button>
                             </div>
                             <div class="vt-field">
-                                <div class="vt-row"><label for="fund-vlt">Get VLT (spend USDC via zap)</label><input id="fund-vlt" type="text" value="5000"></div>
+                                <div class="vt-row"><label for="fund-vlt">Get VLT (spend USDC via zap)</label><input id="fund-vlt" type="text" value="5000" inputmode="decimal"></div>
                                 <button class="button primary" id="fund-vlt-go" type="button" disabled>Buy VLT</button>
                             </div>
                         </div>
@@ -470,7 +474,7 @@
                                 <input type="range" id="red-slider" min="0" max="100" step="1" value="0" title="withdraw % of your share balance">
                                 <span class="vt-hint" data-field="red-pct" style="white-space:nowrap">0%</span>
                             </div>
-                            <input id="red-shares" type="text" value="0">
+                            <input id="red-shares" type="text" value="0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="red-out"></span></div>
                         </div>
                         <div class="vt-actions">

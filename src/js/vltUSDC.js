@@ -87,6 +87,7 @@
     zapSeq: 0, // sequence guard for the async zap quote
     zapExpShares: null, // exact shares from the last successful zap static call (else NAV estimate)
     swapSeq: 0, // sequence guard for the async Swap-tab quote
+    swapSide: "in", // which Swap box the user last edited ("in" | "out") — drives the quote direction
     swapPerm: { usdc: false, vlt: false }, // Permit2 approval state (ERC20→Permit2 AND Permit2→UR)
     gwei: 0, ethUsd: 0, // live mainnet gas (gwei) + ETH/USD (0 = not fetched yet), set by fetchMainnetPrices()
     useRoutingApi: false, // build zap swapData with the in-browser Uniswap SDK instead of built-in
@@ -454,12 +455,42 @@
   }
   var _swapTimer;
   function refreshSwapQuoteDebounced() { clearTimeout(_swapTimer); _swapTimer = setTimeout(refreshSwapQuote, 350); }
+  // Reverse estimate for "type what you want out": mixed routes are EXACT_INPUT-only in the SDK,
+  // so invert the forward quote — a 1-unit probe for the marginal rate, then up to three
+  // proportional corrections. All buildSwap calls are local math on the pool state already read
+  // by readPoolParams (no extra RPC), so the loop is effectively free.
+  async function estimateSwapInput(p, targetOutRaw) {
+    var unit = toBN(10).pow(toBN(swapDec(p.tokenIn)));
+    var target = toBN(targetOutRaw);
+    var r = await UniswapRouting.buildSwap(Object.assign({}, p, { amountIn: unit.toString() }));
+    if (!toBN(r.quotedOut).gtn(0)) throw new Error("no liquidity on this route");
+    var guess = target.mul(unit).div(toBN(r.quotedOut));
+    for (var i = 0; i < 3; i++) {
+      if (guess.lten(0)) guess = toBN("1");
+      r = await UniswapRouting.buildSwap(Object.assign({}, p, { amountIn: guess.toString() }));
+      var out = toBN(r.quotedOut);
+      if (!out.gtn(0)) throw new Error("no liquidity on this route");
+      if (out.sub(target).abs().muln(1000).lte(target)) break; // within 0.1% of the target
+      guess = guess.mul(target).div(out);
+    }
+    return { inRaw: guess.toString(), quote: r };
+  }
+  // Two-way quote: whichever box the user last edited (state.swapSide) is the anchor — typing
+  // the From amount fills the To box with the quote; typing the To amount reverse-estimates the
+  // required From amount. The swap itself is always EXACT_INPUT on the From box (minOut guards).
   async function refreshSwapQuote() {
     var seq = ++state.swapSeq;
     var t = swapTokens();
-    var amountRaw;
-    try { amountRaw = parseUnits($("#swp-amount").val(), swapDec(t.tin)); } catch (e) { amountRaw = "0"; }
-    if (toBN(amountRaw).lten(0)) { setField("swp-out-est", ""); renderSwapRoute(null); return; }
+    var side = state.swapSide;
+    var srcRaw;
+    try {
+      srcRaw = parseUnits($(side === "out" ? "#swp-out-amount" : "#swp-amount").val(), swapDec(side === "out" ? t.tout : t.tin));
+    } catch (e) { srcRaw = "0"; }
+    if (toBN(srcRaw).lten(0)) {
+      $(side === "out" ? "#swp-amount" : "#swp-out-amount").val("");
+      if (side === "out") syncSwapSliderFromAmount();
+      setField("swp-out-est", ""); renderSwapRoute(null); return;
+    }
     if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwap) {
       renderSwapRoute(null, "uniswap-routing bundle not loaded (run npm run bundle:routing)", true); return;
     }
@@ -468,14 +499,23 @@
       var p = await readPoolParams();
       if (seq !== state.swapSeq) return;
       p.tokenIn = t.tin; p.tokenOut = t.tout;
-      p.amountIn = String(amountRaw);
       p.recipient = state.account || "0x0000000000000000000000000000000000000001"; // display quote pre-connect
       p.deadline = DEADLINE; // display only — doSwap() rebuilds with a live deadline
-      var r = await UniswapRouting.buildSwap(p);
-      if (seq !== state.swapSeq) return;
+      var r;
+      if (side === "out") {
+        var est = await estimateSwapInput(p, String(srcRaw));
+        if (seq !== state.swapSeq) return;
+        r = est.quote;
+        $("#swp-amount").val(formatUnits(est.inRaw, swapDec(t.tin), 6));
+        syncSwapSliderFromAmount();
+      } else {
+        p.amountIn = String(srcRaw);
+        r = await UniswapRouting.buildSwap(p);
+        if (seq !== state.swapSeq) return;
+        $("#swp-out-amount").val(formatUnits(r.quotedOut, swapDec(t.tout), 6));
+      }
       var outDec = swapDec(t.tout);
-      var usd = usdEq(swapUsd(t.tout, r.quotedOut));
-      setField("swp-out-est", fmtT(r.quotedOut, outDec) + " " + t.tout + (usd ? " " + usd : ""));
+      setField("swp-out-est", usdEq(swapUsd(t.tout, r.quotedOut)));
       renderSwapRoute([
         ["route", r.routeText || "—"],
         ["minimum received", fmtT(r.minOut, outDec) + " " + t.tout],
@@ -576,6 +616,11 @@
   function flipSwap() {
     var tin = $("#swp-in").val();
     $("#swp-in").val($("#swp-out").val()); $("#swp-out").val(tin);
+    // Swap the amounts and the anchor with the tokens, so the value the user actually TYPED stays
+    // the typed side (reversing "1000 VLT for ~398 USDC" → "1000 VLT for ~398 USDC" the other way).
+    var a = $("#swp-amount").val();
+    $("#swp-amount").val($("#swp-out-amount").val()); $("#swp-out-amount").val(a);
+    state.swapSide = state.swapSide === "out" ? "in" : "out";
     state._swpPrevIn = $("#swp-in").val(); state._swpPrevOut = $("#swp-out").val();
     renderSwapChip(); renderSwapAction(); syncSwapSliderFromAmount(); refreshSwapQuoteDebounced();
   }
@@ -598,6 +643,7 @@
     var pct = Number($("#swp-slider").val());
     var tk = swapTokens().tin.toLowerCase();
     var dec = decOf(tk);
+    state.swapSide = "in"; // the slider writes the From box
     $("#swp-amount").val(formatUnits(toBN(swapMaxRaw(tk)).muln(pct).divn(100).toString(), dec, dec));
     setField("swp-pct", pct + "%");
     refreshSwapQuoteDebounced();
@@ -686,6 +732,7 @@
     var tk = $(this).attr("data-token"), target = $(this).attr("data-target");
     if (target === "swp-amount") {
       // Swap max: ETH keeps the gas reserve back so the swap (and anything after) stays payable.
+      state.swapSide = "in"; // the chip writes the From box
       $("#" + target).val(formatUnits(swapMaxRaw(tk), decOf(tk), decOf(tk)));
       syncSwapSliderFromAmount(); // lands on 100%
       refreshSwapQuoteDebounced();
@@ -1555,7 +1602,8 @@
     $("#red-slider").on("input", onRedeemSlider);
     $("#zap-usdc").on("input", function () { onZapTotal(false); }).on("change", function () { onZapTotal(true); });
     $("#zap-slider").on("input", onZapSlider);
-    $("#swp-amount").on("input", function () { syncSwapSliderFromAmount(); refreshSwapQuoteDebounced(); });
+    $("#swp-amount").on("input", function () { state.swapSide = "in"; syncSwapSliderFromAmount(); refreshSwapQuoteDebounced(); });
+    $("#swp-out-amount").on("input", function () { state.swapSide = "out"; refreshSwapQuoteDebounced(); });
     $("#swp-slider").on("input", onSwapSlider);
     $("#swp-in").on("change", function () { onSwapTokenChange("in"); });
     $("#swp-out").on("change", function () { onSwapTokenChange("out"); });
