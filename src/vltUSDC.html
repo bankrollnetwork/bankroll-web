@@ -247,6 +247,7 @@
                     <button type="button" class="vt-tab" data-tab="your-stats">Your Stats</button>
                     <button type="button" class="vt-tab" data-tab="deposit">Deposit</button>
                     <button type="button" class="vt-tab" data-tab="withdraw">Withdraw</button>
+                    <button type="button" class="vt-tab" data-tab="swap">Swap</button>
                     <button type="button" class="vt-tab" data-tab="advanced">Advanced</button>
                     <button type="button" class="vt-tab" data-tab="config">Config</button>
                     <span class="vt-tab-actions"><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="refresh-all" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span>
@@ -256,6 +257,7 @@
                     <div class="vt-tab-pane" id="pane-your-stats"></div>
                     <div class="vt-tab-pane" id="pane-deposit"></div>
                     <div class="vt-tab-pane" id="pane-withdraw"></div>
+                    <div class="vt-tab-pane" id="pane-swap"></div>
                     <div class="vt-tab-pane" id="pane-advanced"></div>
                     <div class="vt-tab-pane" id="pane-config"></div>
                 </div>
@@ -308,6 +310,47 @@
                             <div class="vt-kv"><span>lifetime fees</span><strong data-field="vs-fees">-</strong></div>
                         </div>
                         <p class="calc-note">L per share is liquidity-denominated, not USD.</p>
+                    </div>
+
+                    <!-- Swap (ETH / USDC / VLT) — user's wallet → Universal Router directly; no ZapHelper.
+                         ETH legs wrap/unwrap in the router (ETH-in needs no approval); ERC-20 inputs
+                         pull via Permit2 (Settings → Approvals). -->
+                    <div class="calculator-panel reveal is-visible" id="swap-panel">
+                        <div class="panel-heading">
+                            <i class="simple-icon-shuffle" aria-hidden="true"></i>
+                            <div><h2>Swap</h2><p>Convert between ETH, USDC and VLT — routed through Uniswap</p></div>
+                        </div>
+                        <div class="vt-row">
+                            <label for="swp-amount">From <span class="vt-bal" id="swp-bal" data-token="eth" data-target="swp-amount" title="click to use max (ETH keeps a gas reserve)">…</span></label>
+                            <div style="display:flex; gap:8px;">
+                                <select id="swp-in" style="flex:0 0 110px; width:auto;">
+                                    <option value="ETH" selected>ETH</option>
+                                    <option value="USDC">USDC</option>
+                                    <option value="VLT">VLT</option>
+                                </select>
+                                <input id="swp-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="vt-actions" style="margin:0 0 10px;">
+                            <button class="button ghost small" id="swp-flip" type="button" title="flip direction">&#8645; Flip</button>
+                        </div>
+                        <div class="vt-row">
+                            <label for="swp-out">To</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <select id="swp-out" style="flex:0 0 110px; width:auto;">
+                                    <option value="ETH">ETH</option>
+                                    <option value="USDC" selected>USDC</option>
+                                    <option value="VLT">VLT</option>
+                                </select>
+                                <div class="vt-recv" style="flex:1; margin:0; text-align:right;"><span>you receive ≈</span> <span data-field="swp-out-est"></span></div>
+                            </div>
+                        </div>
+                        <div class="vt-actions">
+                            <button class="button primary" id="swp-go" type="button" disabled>Swap</button>
+                            <button class="button ghost" id="swp-approve-p" type="button" disabled>Approve</button>
+                        </div>
+                        <div class="vt-route" data-field="swp-route" style="margin-top:18px;"><div class="vt-route-note">Enter an amount to see the route.</div></div>
+                        <p class="calc-note" data-field="swp-note">&nbsp;</p>
                     </div>
 
                     <!-- Your Stats (wallet + position) — same card layout as vltUSDC Stats. -->
@@ -515,6 +558,16 @@
                         <div class="vt-approval-label"><strong>USDC → Vault</strong><span>required for Direct Deposit (Advanced)</span></div>
                         <button class="button ghost" id="dep-approve-usdc" type="button" disabled>Approve USDC</button>
                     </div>
+                    <!-- Swap-tab approvals (Permit2 model: ERC20 → Permit2 + Permit2 grant → Universal
+                         Router, both handled by the one button). ETH swaps need no approval. -->
+                    <div class="vt-approval-row">
+                        <div class="vt-approval-label"><strong>USDC → Permit2</strong><span>required to swap USDC (Swap tab); 2 transactions</span></div>
+                        <button class="button ghost" id="swap-approve-usdc" type="button" disabled>Approve USDC</button>
+                    </div>
+                    <div class="vt-approval-row">
+                        <div class="vt-approval-label"><strong>VLT → Permit2</strong><span>required to swap VLT (Swap tab); 2 transactions</span></div>
+                        <button class="button ghost" id="swap-approve-vlt" type="button" disabled>Approve VLT</button>
+                    </div>
                 </div>
                 <div class="vt-mpane" id="mset-advanced">
                     <p style="opacity:.65;font-size:.85rem;margin:0 0 16px">Opt-in tools for advanced users. Saved in this browser; off by default.</p>
@@ -552,7 +605,7 @@
     <!-- Bundled @uniswap/universal-router-sdk (+ v3/v2/router/sdk-core) → window.UniswapRouting.
          Build with `npm run bundle:routing`. Standalone vendor file (kept OUT of the build:js
          bundle); only used when the Config "Uniswap routing SDK" toggle is on. -->
-    <script src="js/vendor/uniswap-routing.js"></script>
+    <script src="js/vendor/uniswap-routing.js?v=20260716"></script>
     <script src="js/config.js"></script>
     <!-- build:js js/vltUSDC.bundle.js -->
     <script src="js/vault-abi.js"></script>

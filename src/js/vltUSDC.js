@@ -51,6 +51,25 @@
     { name: "token0", stateMutability: "view", type: "function", inputs: [], outputs: [{ name: "", type: "address" }] },
   ];
 
+  // Swap tab: the user's wallet talks to the Universal Router DIRECTLY (no ZapHelper) — native
+  // ETH wraps/unwraps inside the router; ERC-20 inputs are pulled via the canonical Permit2.
+  var UNIVERSAL_ROUTER = "0x66a9893cc07d91d95644aedd05d03f95e1dba8af"; // mainnet UR (fork = mainnet)
+  var PERMIT2 = "0x000000000022d473030f116ddee9f6b43ac78ba3";
+  var PERMIT2_ABI = [
+    { name: "allowance", stateMutability: "view", type: "function",
+      inputs: [{ name: "owner", type: "address" }, { name: "token", type: "address" }, { name: "spender", type: "address" }],
+      outputs: [{ name: "amount", type: "uint160" }, { name: "expiration", type: "uint48" }, { name: "nonce", type: "uint48" }] },
+    { name: "approve", stateMutability: "nonpayable", type: "function",
+      inputs: [{ name: "token", type: "address" }, { name: "spender", type: "address" }, { name: "amount", type: "uint160" }, { name: "expiration", type: "uint48" }],
+      outputs: [] },
+  ];
+  var MAX_UINT160 = "1461501637330902918203684832716283019655932542975"; // 2^160 - 1
+  var MAX_UINT48 = "281474976710655"; // 2^48 - 1 (Permit2 expiration = never)
+  var ETH_GAS_RESERVE_WEI = "20000000000000000"; // 0.02 ETH the max-chip keeps back for gas
+  // Mainnet token fallbacks so the Swap tab quotes even before a vault is configured.
+  var MAINNET_USDC = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+  var MAINNET_VLT = "0x6b785a0322126826d8226d77e173d75dafb84d11";
+
   var state = {
     cfg: { rpc: "http://127.0.0.1:8545", vault: "", zap: "" },
     readWeb3: null, // active read provider (public RPC pre-connect, wallet once connected)
@@ -67,6 +86,8 @@
     slippageBps: 100, // zap min-out tolerance; default 1%
     zapSeq: 0, // sequence guard for the async zap quote
     zapExpShares: null, // exact shares from the last successful zap static call (else NAV estimate)
+    swapSeq: 0, // sequence guard for the async Swap-tab quote
+    swapPerm: { usdc: false, vlt: false }, // Permit2 approval state (ERC20→Permit2 AND Permit2→UR)
     gwei: 0, ethUsd: 0, // live mainnet gas (gwei) + ETH/USD (0 = not fetched yet), set by fetchMainnetPrices()
     useRoutingApi: false, // build zap swapData with the in-browser Uniswap SDK instead of built-in
     advDeposits: false, // Settings → Advanced: show the Advanced (two-token deposit) tab. Off by default.
@@ -372,10 +393,10 @@
   // Read live V3 USDC/WETH + V2 WETH/VLT pool state via the read provider and hand the raw values to
   // the bundled @uniswap/universal-router-sdk (window.UniswapRouting) to build + encode the calldata.
   // Output recipient = the ZapHelper (it measures its own balance delta). chainId 1 — fork mirrors it.
-  async function sdkRouteSwapData(swapRaw) {
-    if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwapData) {
-      throw new Error("uniswap-routing bundle not loaded (run npm run bundle:routing)");
-    }
+  // Live V3 USDC/WETH + V2 WETH/VLT pool state + token metadata, shaped as the routing bundle's
+  // shared params (see uniswap-routing-entry.js buildContext). Used by both the zap route
+  // (Deposit tab) and the Swap tab quotes. Sequential reads per the read-provider etiquette.
+  async function readPoolParams() {
     var w = state.readWeb3;
     var v3 = new w.eth.Contract(V3POOL_ABI, V3_USDC_WETH_POOL);
     var v2 = new w.eth.Contract(V2PAIR_ABI, V2_WETH_VLT_PAIR);
@@ -383,24 +404,189 @@
     var liq = await v3.methods.liquidity().call();
     var res = await v2.methods.getReserves().call();
     var wethIs0 = (await v2.methods.token0().call()).toLowerCase() === WETH.toLowerCase();
-    var r = await UniswapRouting.buildSwapData({
+    return {
       chainId: 1,
-      recipient: state.cfg.zap,
-      amountIn: String(swapRaw),
       slippageBps: state.slippageBps,
-      deadline: DEADLINE,
-      usdc: { address: state.tokens.usdc, decimals: state.tokens.usdcDec },
+      usdc: { address: state.tokens.usdc || MAINNET_USDC, decimals: state.tokens.usdcDec || 6 },
       weth: { address: WETH },
-      vlt: { address: state.tokens.vlt, decimals: state.tokens.vltDec },
+      vlt: { address: state.tokens.vlt || MAINNET_VLT, decimals: state.tokens.vltDec || 18 },
       v3: { fee: 500, tickSpacing: 10, sqrtPriceX96: String(s0.sqrtPriceX96 || s0[0]), tick: String(s0.tick || s0[1]), liquidity: String(liq) },
       v2: { wethReserve: String(wethIs0 ? res[0] : res[1]), vltReserve: String(wethIs0 ? res[1] : res[0]) },
-    });
+    };
+  }
+  async function sdkRouteSwapData(swapRaw) {
+    if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwapData) {
+      throw new Error("uniswap-routing bundle not loaded (run npm run bundle:routing)");
+    }
+    var p = await readPoolParams();
+    p.recipient = state.cfg.zap;
+    p.amountIn = String(swapRaw);
+    p.deadline = DEADLINE;
+    var r = await UniswapRouting.buildSwapData(p);
     return { calldata: r.calldata, routeText: r.routeText };
+  }
+
+  // ── Swap tab: ETH / USDC / VLT via the Universal Router (no ZapHelper) ──────
+  // Quote + calldata come from the routing bundle's buildSwap; the tx goes straight from the
+  // user's wallet to the UR. ETH in/out wraps/unwraps inside the router (ETH-in needs no
+  // approval at all); ERC-20 inputs are pulled via Permit2 — two one-time approvals per token
+  // (ERC20 → Permit2, then Permit2 grant → UR), driven from Settings → Approvals.
+  function swapTokens() { return { tin: $("#swp-in").val() || "ETH", tout: $("#swp-out").val() || "USDC" }; }
+  function swapDec(sym) { return sym === "USDC" ? (state.tokens.usdcDec || 6) : 18; }
+  function renderSwapRoute(rows, note, warn) {
+    var el = $f("swp-route"); if (!el) return;
+    var html = "";
+    if (rows && rows.length) {
+      html = '<div class="vt-kvs">';
+      for (var i = 0; i < rows.length; i++) html += '<div class="vt-kv"><span>' + rows[i][0] + "</span><strong>" + rows[i][1] + "</strong></div>";
+      html += "</div>";
+    }
+    if (note) html += '<div class="vt-route-note' + (warn ? " vt-warn" : "") + '">' + note + "</div>";
+    el.innerHTML = html || '<div class="vt-route-note">Enter an amount to see the route.</div>';
+  }
+  var _swapTimer;
+  function refreshSwapQuoteDebounced() { clearTimeout(_swapTimer); _swapTimer = setTimeout(refreshSwapQuote, 350); }
+  async function refreshSwapQuote() {
+    var seq = ++state.swapSeq;
+    var t = swapTokens();
+    var amountRaw;
+    try { amountRaw = parseUnits($("#swp-amount").val(), swapDec(t.tin)); } catch (e) { amountRaw = "0"; }
+    if (toBN(amountRaw).lten(0)) { setField("swp-out-est", ""); renderSwapRoute(null); return; }
+    if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwap) {
+      renderSwapRoute(null, "uniswap-routing bundle not loaded (run npm run bundle:routing)", true); return;
+    }
+    renderSwapRoute(null, "quoting…");
+    try {
+      var p = await readPoolParams();
+      if (seq !== state.swapSeq) return;
+      p.tokenIn = t.tin; p.tokenOut = t.tout;
+      p.amountIn = String(amountRaw);
+      p.recipient = state.account || "0x0000000000000000000000000000000000000001"; // display quote pre-connect
+      p.deadline = DEADLINE; // display only — doSwap() rebuilds with a live deadline
+      var r = await UniswapRouting.buildSwap(p);
+      if (seq !== state.swapSeq) return;
+      var outDec = swapDec(t.tout);
+      setField("swp-out-est", fmtT(r.quotedOut, outDec) + " " + t.tout);
+      renderSwapRoute([
+        ["route", r.routeText || "—"],
+        ["minimum received", fmtT(r.minOut, outDec) + " " + t.tout],
+        ["slippage", (state.slippageBps / 100) + "%"],
+      ]);
+    } catch (e) {
+      if (seq !== state.swapSeq) return;
+      setField("swp-out-est", "");
+      renderSwapRoute(null, "quote failed: " + errText(e), true);
+    }
+  }
+  // Both Permit2 legs must be live for an ERC-20 input: ERC20 allowance → Permit2, AND the
+  // Permit2 internal grant → Universal Router (unexpired, nonzero).
+  async function permit2On(tokenAddr) {
+    var w = state.readWeb3;
+    var erc = new w.eth.Contract(ERC20_ABI, tokenAddr);
+    var a = await erc.methods.allowance(state.account, PERMIT2).call();
+    if (!toBN(a).gtn(0)) return false;
+    var p2 = new w.eth.Contract(PERMIT2_ABI, PERMIT2);
+    var g = await p2.methods.allowance(state.account, tokenAddr, UNIVERSAL_ROUTER).call();
+    var amt = toBN(g.amount || g[0]);
+    var exp = Number(g.expiration || g[1]);
+    return amt.gtn(0) && exp > Math.floor(Date.now() / 1000);
+  }
+  async function renderSwapApprovals() {
+    var have = { usdc: false, vlt: false };
+    if (state.account) {
+      try {
+        have.usdc = await permit2On(state.tokens.usdc || MAINNET_USDC);
+        have.vlt = await permit2On(state.tokens.vlt || MAINNET_VLT);
+      } catch (e) { return; } // network hiccup — keep previous state
+    }
+    state.swapPerm = have;
+    $("#swap-approve-usdc").prop("disabled", !state.account).text(have.usdc ? "Unapprove USDC" : "Approve USDC");
+    $("#swap-approve-vlt").prop("disabled", !state.account).text(have.vlt ? "Unapprove VLT" : "Approve VLT");
+    renderSwapAction();
+  }
+  // Gate the Swap button on the INPUT token's requirements (ETH-in needs nothing but a wallet).
+  function renderSwapAction() {
+    var t = swapTokens();
+    var ok = !!state.account && (t.tin === "ETH" || state.swapPerm[t.tin.toLowerCase()]);
+    gateAction("#swp-go", ok);
+    // In-panel approve stand-in (hidden once approved / for ETH): mirrors the other panels.
+    $("#swp-approve-p").prop("disabled", !state.account || t.tin === "ETH" || state.swapPerm[t.tin.toLowerCase()])
+      .text("Approve " + t.tin);
+  }
+  async function toggleSwapApproval(sym) {
+    try {
+      requireConnected();
+      var tokenAddr = sym === "USDC" ? (state.tokens.usdc || MAINNET_USDC) : (state.tokens.vlt || MAINNET_VLT);
+      var erc = new web3.eth.Contract(ERC20_ABI, tokenAddr);
+      var p2 = new web3.eth.Contract(PERMIT2_ABI, PERMIT2);
+      var on = state.swapPerm[sym.toLowerCase()];
+      if (on) {
+        // Revoke both legs (inner grant first so no window exists where UR can still pull).
+        await runTx("revoke Permit2 grant " + sym + " → UR", p2.methods.approve(tokenAddr, UNIVERSAL_ROUTER, "0", "0").send({ from: state.account }));
+        await runTx("unapprove " + sym + " → Permit2", erc.methods.approve(PERMIT2, "0").send({ from: state.account }));
+      } else {
+        var cur = await erc.methods.allowance(state.account, PERMIT2).call();
+        if (!toBN(cur).gtn(0)) {
+          await runTx("approve(MAX) " + sym + " → Permit2", erc.methods.approve(PERMIT2, MAX_UINT).send({ from: state.account }));
+        }
+        await runTx("Permit2 grant " + sym + " → Universal Router", p2.methods.approve(tokenAddr, UNIVERSAL_ROUTER, MAX_UINT160, MAX_UINT48).send({ from: state.account }));
+      }
+      await renderSwapApprovals();
+    } catch (e) { logEntry(errText(e), "err"); }
+  }
+  async function doSwap() {
+    try {
+      requireConnected();
+      var t = swapTokens();
+      var amountRaw = parseUnits($("#swp-amount").val(), swapDec(t.tin));
+      if (toBN(amountRaw).lten(0)) throw new Error("enter an amount");
+      // Rebuild at send time: live pool state + a real mempool deadline (the displayed quote's
+      // deadline is a far-future placeholder).
+      var p = await readPoolParams();
+      p.tokenIn = t.tin; p.tokenOut = t.tout;
+      p.amountIn = String(amountRaw);
+      p.recipient = state.account;
+      p.deadline = await txDeadline();
+      var r = await UniswapRouting.buildSwap(p);
+      await runTx("swap " + $("#swp-amount").val() + " " + t.tin + " → " + t.tout + " (min " + fmtT(r.minOut, swapDec(t.tout)) + ")",
+        web3.eth.sendTransaction({ from: state.account, to: UNIVERSAL_ROUTER, data: r.calldata, value: r.value || "0x0" }));
+      refreshSwapQuote();
+    } catch (e) { note("swp-note", errText(e), "vt-warn"); }
+  }
+  // Keep the pair valid (in ≠ out): picking the other side's token swaps them, like a flip.
+  function onSwapTokenChange(changed) {
+    var tin = $("#swp-in").val(), tout = $("#swp-out").val();
+    if (tin === tout) {
+      var prev = changed === "in" ? state._swpPrevIn : state._swpPrevOut;
+      if (changed === "in") $("#swp-out").val(prev || (tin === "USDC" ? "ETH" : "USDC"));
+      else $("#swp-in").val(prev || (tout === "USDC" ? "ETH" : "USDC"));
+    }
+    state._swpPrevIn = $("#swp-in").val(); state._swpPrevOut = $("#swp-out").val();
+    renderSwapChip(); renderSwapAction(); refreshSwapQuoteDebounced();
+  }
+  function flipSwap() {
+    var tin = $("#swp-in").val();
+    $("#swp-in").val($("#swp-out").val()); $("#swp-out").val(tin);
+    state._swpPrevIn = $("#swp-in").val(); state._swpPrevOut = $("#swp-out").val();
+    renderSwapChip(); renderSwapAction(); refreshSwapQuoteDebounced();
+  }
+  // The balance chip follows the selected input token; ETH max keeps a gas reserve back.
+  function renderSwapChip() {
+    var tk = swapTokens().tin.toLowerCase();
+    var chip = $("#swp-bal");
+    chip.attr("data-token", tk);
+    chip.text(formatUnits(swapMaxRaw(tk), decOf(tk), 4) + " · max");
+  }
+  function swapMaxRaw(tk) {
+    var b = toBN(balRaw(tk));
+    if (tk !== "eth") return b.toString();
+    var r = b.sub(toBN(ETH_GAS_RESERVE_WEI));
+    return r.gtn(0) ? r.toString() : "0";
   }
 
   // ── input UX: balances, max chips, deposit estimator, zap quote, slippage ────
   function toBN(x) { return web3.utils.toBN(x); }
-  function decOf(token) { return token === "usdc" ? state.tokens.usdcDec : token === "shares" ? state.tokens.sharesDec : state.tokens.vltDec; }
+  function decOf(token) { return token === "usdc" ? state.tokens.usdcDec : token === "shares" ? state.tokens.sharesDec : token === "eth" ? 18 : state.tokens.vltDec; }
   function balRaw(token) { return state.bal[token] || "0"; }
   function maxHuman(token) { var d = decOf(token); return formatUnits(balRaw(token), d, d); }
   function numVal(sel) { var n = parseFloat($(sel).val()); return isFinite(n) ? n : 0; }
@@ -461,13 +647,22 @@
 
   // balance chips ------------------------------------------------------------
   function renderBalanceChips() {
-    $(".vt-bal").each(function () {
+    $(".vt-bal").not("#swp-bal").each(function () {
       var tk = $(this).data("token");
       $(this).text(formatUnits(balRaw(tk), decOf(tk), 4) + " · max");
     });
+    renderSwapChip(); // the swap chip owns its own render (token follows the select; ETH reserves gas)
   }
   function onBalChip() {
-    var tk = $(this).data("token"), target = $(this).data("target");
+    // attr(), not data(): the swap chip's data-token changes with the token select, and jQuery's
+    // data() would serve the first (cached) value forever.
+    var tk = $(this).attr("data-token"), target = $(this).attr("data-target");
+    if (target === "swp-amount") {
+      // Swap max: ETH keeps the gas reserve back so the swap (and anything after) stays payable.
+      $("#" + target).val(formatUnits(swapMaxRaw(tk), decOf(tk), decOf(tk)));
+      refreshSwapQuoteDebounced();
+      return;
+    }
     $("#" + target).val(maxHuman(tk));
     if (target === "dep-vlt") onDepInput("vlt", true);
     else if (target === "dep-usdc") onDepInput("usdc", true);
@@ -692,6 +887,7 @@
     try { localStorage.setItem(SLIP_KEY, String(state.slippageBps)); } catch (e) {}
     logEntry("max slippage set to " + pct + "%", "ok");
     refreshZapQuote();
+    refreshSwapQuoteDebounced(); // swap minimum-received moves with the tolerance too
     depositPreview(); // re-compute the deposit minShares floor at the new tolerance
   }
 
@@ -799,6 +995,7 @@
   async function renderAllApprovals() {
     for (var i = 0; i < APPROVALS.length; i++) await renderApproval(APPROVALS[i]);
     renderApprovalRows(); // a.on is fresh now — a live vault allowance keeps its row (revocable)
+    await renderSwapApprovals(); // Permit2 pair for the Swap tab (own two-leg model)
     var depOk = APPROVALS[0].on && APPROVALS[1].on; // VLT + USDC → vault
     var zapOk = APPROVALS[2].on;                    // USDC → ZapHelper
     gateAction("#dep-go", depOk);
@@ -1178,6 +1375,7 @@
       "pane-your-stats": ["your-stats"],
       "pane-deposit": ["zap-go"],
       "pane-withdraw": ["red-go"],
+      "pane-swap": ["swap-panel"],
       "pane-advanced": ["dep-go"],
       "pane-config": ["cfg-save", "fund-eth-go"],
     };
@@ -1297,6 +1495,7 @@
       onZapTotal(false);
       depositPreview();
       redeemPreviewDebounced();
+      refreshSwapQuoteDebounced();
     })());
   }
 
@@ -1328,6 +1527,14 @@
     $("#red-slider").on("input", onRedeemSlider);
     $("#zap-usdc").on("input", function () { onZapTotal(false); }).on("change", function () { onZapTotal(true); });
     $("#zap-slider").on("input", onZapSlider);
+    $("#swp-amount").on("input", refreshSwapQuoteDebounced);
+    $("#swp-in").on("change", function () { onSwapTokenChange("in"); });
+    $("#swp-out").on("change", function () { onSwapTokenChange("out"); });
+    $("#swp-flip").on("click", flipSwap);
+    $("#swp-go").on("click", doSwap);
+    $("#swp-approve-p").on("click", function () { toggleSwapApproval(swapTokens().tin); });
+    $("#swap-approve-usdc").on("click", function () { toggleSwapApproval("USDC"); });
+    $("#swap-approve-vlt").on("click", function () { toggleSwapApproval("VLT"); });
     $("#settings-open").on("click", openSettings);
     $(".vt-mtab").on("click", function () { setSettingsTab($(this).data("stab")); });
     $("#slip-range").on("input", function () { $("#slip-input").val($(this).val()); paintRange(this); });

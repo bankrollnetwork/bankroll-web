@@ -12,22 +12,21 @@
 // whitelisted Universal Router. The V3 pool is modeled as a single full-range position at the
 // live (sqrtPriceX96, tick, liquidity) — accurate for moderate swaps with no tick crossing; the
 // internal min-out uses a slippage buffer and the ZapHelper enforces the real minVltOut/minShares.
-const { Token, CurrencyAmount, TradeType, Percent } = require("@uniswap/sdk-core");
-const { Pool, TickMath, nearestUsableTick, Tick } = require("@uniswap/v3-sdk");
-const { Pair } = require("@uniswap/v2-sdk");
+const { Token, CurrencyAmount, TradeType, Percent, Ether } = require("@uniswap/sdk-core");
+const { Pool, TickMath, nearestUsableTick, Tick, Route: RouteV3 } = require("@uniswap/v3-sdk");
+const { Pair, Route: RouteV2 } = require("@uniswap/v2-sdk");
 const { Trade, MixedRouteSDK } = require("@uniswap/router-sdk");
 const { SwapRouter } = require("@uniswap/universal-router-sdk");
 
-// p = {
-//   chainId, recipient, amountIn, slippageBps, deadline,
-//   usdc:{address,decimals}, weth:{address}, vlt:{address,decimals},
-//   v3:{fee, tickSpacing, sqrtPriceX96, tick, liquidity},
-//   v2:{wethReserve, vltReserve},
-// }  — all numeric fields are decimal strings.
-async function buildSwapData(p) {
+// Shared context: SDK Token/pool/pair objects from the plain values the browser read via web3.
+// p carries: chainId, usdc:{address,decimals}, weth:{address}, vlt:{address,decimals},
+//   v3:{fee, tickSpacing, sqrtPriceX96, tick, liquidity}, v2:{wethReserve, vltReserve}
+// — all numeric fields decimal strings (BigintIsh; keeps every jsbi instance inside this module).
+function buildContext(p) {
   const USDC = new Token(p.chainId, p.usdc.address, p.usdc.decimals, "USDC");
   const WETH = new Token(p.chainId, p.weth.address, 18, "WETH");
   const VLT = new Token(p.chainId, p.vlt.address, p.vlt.decimals, "VLT");
+  const ETH = Ether.onChain(p.chainId); // native; SwapRouter emits WRAP_ETH / UNWRAP_WETH commands
 
   // V3 USDC/WETH pool, modeled as one full-range position with the live liquidity.
   const spacing = Number(p.v3.tickSpacing);
@@ -46,21 +45,69 @@ async function buildSwapData(p) {
     CurrencyAmount.fromRawAmount(VLT, String(p.v2.vltReserve))
   );
 
-  const route = new MixedRouteSDK([pool, pair], USDC, VLT);
-  const trade = await Trade.fromRoute(route, CurrencyAmount.fromRawAmount(USDC, String(p.amountIn)), TradeType.EXACT_INPUT);
+  return { USDC, WETH, VLT, ETH, pool, pair };
+}
 
-  const { calldata } = SwapRouter.swapCallParameters(trade, {
-    slippageTolerance: new Percent(p.slippageBps, 10000),
-    recipient: p.recipient, // route output to the ZapHelper (it measures its own balance delta)
+// Encode a trade + slippage/recipient/deadline into Universal Router execute() params.
+function encode(trade, p) {
+  const slippageTolerance = new Percent(p.slippageBps, 10000);
+  const { calldata, value } = SwapRouter.swapCallParameters(trade, {
+    slippageTolerance: slippageTolerance,
+    recipient: p.recipient,
     deadlineOrPreviousBlockhash: String(p.deadline),
   });
-  return { calldata: calldata, quotedVltOut: trade.outputAmount.quotient.toString(), routeText: describeRoute(trade) };
+  return {
+    calldata: calldata,
+    value: value, // nonzero (hex) when the input is native ETH — send as the tx value
+    quotedOut: trade.outputAmount.quotient.toString(),
+    minOut: trade.minimumAmountOut(slippageTolerance).quotient.toString(),
+    routeText: describeRoute(trade),
+  };
+}
+
+// Legacy zap-route entry (Deposit tab): fixed USDC → WETH → VLT, output to the ZapHelper,
+// which enforces the real minVltOut/minShares itself. p additionally carries
+// recipient, amountIn, slippageBps, deadline.
+async function buildSwapData(p) {
+  const c = buildContext(p);
+  const route = new MixedRouteSDK([c.pool, c.pair], c.USDC, c.VLT);
+  const trade = await Trade.fromRoute(route, CurrencyAmount.fromRawAmount(c.USDC, String(p.amountIn)), TradeType.EXACT_INPUT);
+  const r = encode(trade, p);
+  return { calldata: r.calldata, quotedVltOut: r.quotedOut, routeText: r.routeText };
+}
+
+// Generalized pair-scoped swap (Swap tab): any direction over {ETH, USDC, VLT}, sent by the
+// user's wallet DIRECTLY to the Universal Router (no ZapHelper). Native ETH legs wrap/unwrap
+// inside the router; ERC-20 inputs are pulled via Permit2 (approved separately by the client).
+// p as buildSwapData plus tokenIn / tokenOut ∈ "ETH" | "USDC" | "VLT" (recipient = the user).
+async function buildSwap(p) {
+  const c = buildContext(p);
+  const cur = { ETH: c.ETH, USDC: c.USDC, VLT: c.VLT };
+  const IN = cur[p.tokenIn];
+  const OUT = cur[p.tokenOut];
+  if (!IN || !OUT || IN === OUT) throw new Error("unsupported pair " + p.tokenIn + "->" + p.tokenOut);
+
+  // Route legs: ETH↔USDC crosses only the V3 pool, ETH↔VLT only the V2 pair, USDC↔VLT both.
+  // Single-protocol legs use that protocol's own Route class (native-ETH support is first-class
+  // there); only the two-hop USDC↔VLT needs a mixed route.
+  const wantsUsdc = p.tokenIn === "USDC" || p.tokenOut === "USDC";
+  const wantsVlt = p.tokenIn === "VLT" || p.tokenOut === "VLT";
+  let route;
+  if (wantsUsdc && wantsVlt) {
+    route = new MixedRouteSDK(p.tokenIn === "USDC" ? [c.pool, c.pair] : [c.pair, c.pool], IN, OUT);
+  } else if (wantsUsdc) {
+    route = new RouteV3([c.pool], IN, OUT);
+  } else {
+    route = new RouteV2([c.pair], IN, OUT);
+  }
+  const trade = await Trade.fromRoute(route, CurrencyAmount.fromRawAmount(IN, String(p.amountIn)), TradeType.EXACT_INPUT);
+  return encode(trade, p);
 }
 
 // Human description of the route the SDK actually chose, e.g. "USDC →(V3 0.05%) WETH →(V2 0.30%) VLT".
 function describeRoute(trade) {
   try {
-    const r = trade.routes[0]; // single mixed route for USDC→VLT
+    const r = trade.routes[0]; // single mixed route (this module never splits)
     const sym = r.path.map((t) => t.symbol || (t.address || "").slice(0, 6));
     let s = sym[0];
     r.pools.forEach((pool, i) => {
@@ -75,4 +122,4 @@ function describeRoute(trade) {
   }
 }
 
-module.exports = { buildSwapData };
+module.exports = { buildSwapData, buildSwap };
