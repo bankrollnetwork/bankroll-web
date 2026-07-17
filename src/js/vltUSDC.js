@@ -562,13 +562,13 @@
       else $("#swp-in").val(prev || (tout === "USDC" ? "ETH" : "USDC"));
     }
     state._swpPrevIn = $("#swp-in").val(); state._swpPrevOut = $("#swp-out").val();
-    renderSwapChip(); renderSwapAction(); refreshSwapQuoteDebounced();
+    renderSwapChip(); renderSwapAction(); syncSwapSliderFromAmount(); refreshSwapQuoteDebounced();
   }
   function flipSwap() {
     var tin = $("#swp-in").val();
     $("#swp-in").val($("#swp-out").val()); $("#swp-out").val(tin);
     state._swpPrevIn = $("#swp-in").val(); state._swpPrevOut = $("#swp-out").val();
-    renderSwapChip(); renderSwapAction(); refreshSwapQuoteDebounced();
+    renderSwapChip(); renderSwapAction(); syncSwapSliderFromAmount(); refreshSwapQuoteDebounced();
   }
   // The balance chip follows the selected input token; ETH max keeps a gas reserve back.
   function renderSwapChip() {
@@ -582,6 +582,24 @@
     if (tk !== "eth") return b.toString();
     var r = b.sub(toBN(ETH_GAS_RESERVE_WEI));
     return r.gtn(0) ? r.toString() : "0";
+  }
+  // % slider over the input token's spendable balance (100% = swapMaxRaw, so ETH's top end
+  // already keeps the gas reserve back). Mirrors the deposit/withdraw slider pattern.
+  function onSwapSlider() {
+    var pct = Number($("#swp-slider").val());
+    var tk = swapTokens().tin.toLowerCase();
+    var dec = decOf(tk);
+    $("#swp-amount").val(formatUnits(toBN(swapMaxRaw(tk)).muln(pct).divn(100).toString(), dec, dec));
+    setField("swp-pct", pct + "%");
+    refreshSwapQuoteDebounced();
+  }
+  function syncSwapSliderFromAmount() {
+    var tk = swapTokens().tin.toLowerCase();
+    var max = toBN(swapMaxRaw(tk));
+    var a; try { a = toBN(parseUnits($("#swp-amount").val(), decOf(tk))); } catch (e) { a = toBN("0"); }
+    var pct = max.gtn(0) ? Math.min(100, Number(a.muln(100).div(max).toString())) : 0;
+    $("#swp-slider").val(pct);
+    setField("swp-pct", pct + "%");
   }
 
   // ── input UX: balances, max chips, deposit estimator, zap quote, slippage ────
@@ -660,6 +678,7 @@
     if (target === "swp-amount") {
       // Swap max: ETH keeps the gas reserve back so the swap (and anything after) stays payable.
       $("#" + target).val(formatUnits(swapMaxRaw(tk), decOf(tk), decOf(tk)));
+      syncSwapSliderFromAmount(); // lands on 100%
       refreshSwapQuoteDebounced();
       return;
     }
@@ -1527,7 +1546,8 @@
     $("#red-slider").on("input", onRedeemSlider);
     $("#zap-usdc").on("input", function () { onZapTotal(false); }).on("change", function () { onZapTotal(true); });
     $("#zap-slider").on("input", onZapSlider);
-    $("#swp-amount").on("input", refreshSwapQuoteDebounced);
+    $("#swp-amount").on("input", function () { syncSwapSliderFromAmount(); refreshSwapQuoteDebounced(); });
+    $("#swp-slider").on("input", onSwapSlider);
     $("#swp-in").on("change", function () { onSwapTokenChange("in"); });
     $("#swp-out").on("change", function () { onSwapTokenChange("out"); });
     $("#swp-flip").on("click", flipSwap);

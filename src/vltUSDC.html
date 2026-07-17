@@ -322,6 +322,10 @@
                         </div>
                         <div class="vt-row">
                             <label for="swp-amount">From <span class="vt-bal" id="swp-bal" data-token="eth" data-target="swp-amount" title="click to use max (ETH keeps a gas reserve)">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="swp-slider" min="0" max="100" step="1" value="0" title="swap % of your balance (ETH keeps a gas reserve)">
+                                <span class="vt-hint" data-field="swp-pct" style="white-space:nowrap">0%</span>
+                            </div>
                             <div style="display:flex; gap:8px;">
                                 <select id="swp-in" style="flex:0 0 110px; width:auto;">
                                     <option value="ETH" selected>ETH</option>
