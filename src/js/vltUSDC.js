@@ -636,6 +636,9 @@
     var oChip = $("#swp-out-bal");
     oChip.attr("data-token", tout);
     oChip.text(formatUnits(balRaw(tout), decOf(tout), 4));
+    // Token logos on the selects follow the picks (filenames match the lowercase symbols).
+    $("#swp-in-ic").attr("src", "img/logo/coingecko/" + tin + ".png");
+    $("#swp-out-ic").attr("src", "img/logo/coingecko/" + tout + ".png");
   }
   function swapMaxRaw(tk) {
     var b = toBN(balRaw(tk));

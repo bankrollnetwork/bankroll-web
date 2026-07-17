@@ -82,6 +82,16 @@
         /* Amount boxes: right-aligned contents (mobile right-thumb ergonomics). Scoped to the
            decimal-keypad inputs so address/URL fields keep normal alignment. */
         input[inputmode="decimal"] { text-align: right; }
+        /* Token logos (img/logo/coingecko/*.png). .vt-lab groups icon+text into ONE flex item so
+           the space-between label layout keeps chips/hints on the right. */
+        .tok-ic { display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: -4px; } /* inline-block: the theme resets img to block */
+        .vt-kv .tok-ic { width: 16px; height: 16px; vertical-align: -3px; }
+        .vt-lab { display: inline-flex; align-items: center; gap: 6px; }
+        /* Swap token select with the token's logo overlaid on the left (updated by the client
+           when the selection changes). Container owns the flex sizing the bare select had. */
+        .vt-tok-sel { position: relative; flex: 0 0 132px; }
+        .vt-tok-sel .tok-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+        .vt-tok-sel select { width: 100%; padding-left: 38px; }
         /* "you receive ≈ <value>" — right-aligned under the input, only rendered when there's data. */
         .vt-recv { text-align: right; font-size: 0.85rem; margin-top: 6px; }
         .vt-recv > span:first-child { font-weight: 700; opacity: 0.85; }
@@ -335,11 +345,14 @@
                             </div>
                             <div style="display:flex; gap:8px;">
                                 <input id="swp-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
-                                <select id="swp-in" style="flex:0 0 110px; width:auto;">
-                                    <option value="ETH" selected>ETH</option>
-                                    <option value="USDC">USDC</option>
-                                    <option value="VLT">VLT</option>
-                                </select>
+                                <div class="vt-tok-sel">
+                                    <img class="tok-ic" id="swp-in-ic" src="img/logo/coingecko/eth.png" alt="">
+                                    <select id="swp-in">
+                                        <option value="ETH" selected>ETH</option>
+                                        <option value="USDC">USDC</option>
+                                        <option value="VLT">VLT</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="vt-actions" style="margin:0 0 10px; justify-content:center;">
@@ -349,11 +362,14 @@
                             <label for="swp-out-amount">To <span class="vt-bal is-static" id="swp-out-bal" data-token="usdc" title="your current balance">…</span></label>
                             <div style="display:flex; gap:8px;">
                                 <input id="swp-out-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
-                                <select id="swp-out" style="flex:0 0 110px; width:auto;">
-                                    <option value="ETH">ETH</option>
-                                    <option value="USDC" selected>USDC</option>
-                                    <option value="VLT">VLT</option>
-                                </select>
+                                <div class="vt-tok-sel">
+                                    <img class="tok-ic" id="swp-out-ic" src="img/logo/coingecko/usdc.png" alt="">
+                                    <select id="swp-out">
+                                        <option value="ETH">ETH</option>
+                                        <option value="USDC" selected>USDC</option>
+                                        <option value="VLT">VLT</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="vt-recv"><span></span> <span data-field="swp-out-est"></span></div>
                         </div>
@@ -374,9 +390,9 @@
                         <div class="result-grid vt-cards">
                             <div class="vt-kv"><span>Network</span><strong data-field="net">-</strong></div>
                             <div class="vt-kv"><span>Account</span><strong data-field="account">not connected</strong></div>
-                            <div class="vt-kv"><span>ETH</span><strong data-field="eth">-</strong><small class="sc-usd" data-field="eth-usd"></small></div>
-                            <div class="vt-kv"><span>USDC</span><strong data-field="usdc">-</strong></div>
-                            <div class="vt-kv"><span>VLT</span><strong data-field="vlt">-</strong><small class="sc-usd" data-field="vlt-usd"></small></div>
+                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/eth.png" alt=""> ETH</span><strong data-field="eth">-</strong><small class="sc-usd" data-field="eth-usd"></small></div>
+                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span><strong data-field="usdc">-</strong></div>
+                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</span><strong data-field="vlt">-</strong><small class="sc-usd" data-field="vlt-usd"></small></div>
                             <div class="vt-kv"><span>vltUSDC</span><strong data-field="shares">-</strong><small class="sc-sub" data-field="shares-parts"></small><small class="sc-usd" data-field="shares-usd"></small></div>
                         </div>
                     </div>
@@ -411,7 +427,7 @@
                             <div><h2>Direct Deposit</h2><p>Calls vault.deposit() with both tokens — most users should use Deposit (USDC-only)</p></div>
                         </div>
                         <div class="vt-row">
-                            <label for="dep-usdc">USDC amount <span class="vt-bal" data-token="usdc" data-target="dep-usdc" title="click to use full balance">…</span></label>
+                            <label for="dep-usdc"><span class="vt-lab"><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC amount</span> <span class="vt-bal" data-token="usdc" data-target="dep-usdc" title="click to use full balance">…</span></label>
                             <div class="vt-slip-row" style="margin:2px 0 4px;">
                                 <input type="range" id="dep-usdc-slider" min="0" max="100" step="1" value="0" title="USDC as % of your balance">
                                 <span class="vt-hint" data-field="dep-usdc-pct" style="white-space:nowrap">0%</span>
@@ -419,7 +435,7 @@
                             <input id="dep-usdc" type="text" value="5000" inputmode="decimal">
                         </div>
                         <div class="vt-row">
-                            <label for="dep-vlt">VLT amount <span class="vt-bal" data-token="vlt" data-target="dep-vlt" title="click to use full balance">…</span></label>
+                            <label for="dep-vlt"><span class="vt-lab"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT amount</span> <span class="vt-bal" data-token="vlt" data-target="dep-vlt" title="click to use full balance">…</span></label>
                             <div class="vt-slip-row" style="margin:2px 0 4px;">
                                 <input type="range" id="dep-vlt-slider" min="0" max="100" step="1" value="0" title="VLT as % of your balance">
                                 <span class="vt-hint" data-field="dep-vlt-pct" style="white-space:nowrap">0%</span>
@@ -443,7 +459,7 @@
                             <div><h2>Deposit</h2><p>Deposit USDC for vltUSDC — part is auto-swapped to VLT</p></div>
                         </div>
                         <div class="vt-row">
-                            <label for="zap-usdc">USDC
+                            <label for="zap-usdc"><span class="vt-lab"><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span>
                                 <span class="vt-label-right">
                                     <span class="vt-bal" data-token="usdc" data-target="zap-usdc" title="click to use full balance">…</span>
                                 </span>
