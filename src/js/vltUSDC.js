@@ -433,6 +433,14 @@
   // (ERC20 → Permit2, then Permit2 grant → UR), driven from Settings → Approvals.
   function swapTokens() { return { tin: $("#swp-in").val() || "ETH", tout: $("#swp-out").val() || "USDC" }; }
   function swapDec(sym) { return sym === "USDC" ? (state.tokens.usdcDec || 6) : 18; }
+  // ≈$ for a raw swap amount, from the same sources the balance readouts use: USDC at the peg,
+  // VLT at the live V4 pool price, ETH at the fetched mainnet spot. 0 when the price isn't known.
+  function swapUsd(sym, raw) {
+    var n = Number(formatUnits(raw, swapDec(sym)));
+    if (sym === "USDC") return n;
+    if (sym === "VLT") return n * (state.priceUsdcPerVlt || 0);
+    return n * (state.ethUsd || 0); // ETH
+  }
   function renderSwapRoute(rows, note, warn) {
     var el = $f("swp-route"); if (!el) return;
     var html = "";
@@ -466,7 +474,8 @@
       var r = await UniswapRouting.buildSwap(p);
       if (seq !== state.swapSeq) return;
       var outDec = swapDec(t.tout);
-      setField("swp-out-est", fmtT(r.quotedOut, outDec) + " " + t.tout);
+      var usd = usdEq(swapUsd(t.tout, r.quotedOut));
+      setField("swp-out-est", fmtT(r.quotedOut, outDec) + " " + t.tout + (usd ? " " + usd : ""));
       renderSwapRoute([
         ["route", r.routeText || "—"],
         ["minimum received", fmtT(r.minOut, outDec) + " " + t.tout],
