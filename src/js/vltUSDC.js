@@ -907,7 +907,7 @@
     setRoute(baseRows(routeStr), "quoting… (slippage " + slipPct + "%)");
     try {
       var z = state.write.zap.methods;
-      var expVlt = String(await z.zap(state.tokens.usdc, state.tokens.vlt, swapRaw, "0", state.account, swapData).call({ from: state.account }));
+      var expVlt = String(await z.zap(state.tokens.usdc, state.tokens.vlt, swapRaw, "0", DEADLINE, state.account, swapData).call({ from: state.account }));
       if (seq !== state.zapSeq) return;
       // Refine the split for the price gap between the external route and the vault's own pool.
       // fillZapSwap()'s seed assumes both trade at ~the same price, but the vault refunds whatever
@@ -1368,7 +1368,7 @@
       var swapData = (await getZapSwapData(raw)).data;
       // No auto-approve — approve USDC to the ZapHelper via the zapDeposit panel's Approve button first.
       await runTx("zap " + $("#fund-vlt").val() + " USDC -> VLT",
-        state.write.zap.methods.zap(state.tokens.usdc, state.tokens.vlt, raw, "1", state.account, swapData).send({ from: state.account }));
+        state.write.zap.methods.zap(state.tokens.usdc, state.tokens.vlt, raw, "1", await txDeadline(), state.account, swapData).send({ from: state.account }));
     } catch (e) { note("fund-note", errText(e), "vt-warn"); }
   }
 
