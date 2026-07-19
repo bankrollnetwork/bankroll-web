@@ -255,6 +255,12 @@ var VAULT_ABI = [
       {
         "indexed": true,
         "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
         "name": "donor",
         "type": "address"
       },
@@ -558,6 +564,11 @@ var VAULT_ABI = [
         "internalType": "uint256",
         "name": "usdcAmount",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "donor",
+        "type": "address"
       },
       {
         "internalType": "uint256",
@@ -1192,6 +1203,50 @@ var ZAPHELPER_ABI = [
         "internalType": "uint256",
         "name": "shares",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "usdcAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "swapUsdcToVlt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minVltOut",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "deadline",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "donor",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "swapData",
+        "type": "bytes"
+      }
+    ],
+    "name": "zapDonate",
+    "outputs": [
+      {
+        "internalType": "uint128",
+        "name": "liquidityAdded",
+        "type": "uint128"
       }
     ],
     "stateMutability": "nonpayable",
