@@ -377,8 +377,9 @@
   }
 
   // ── swapData builder (mirrors scripts/dev/build_vlt_route.js) ───────────────
-  // USDC -(V3 0.05%)-> WETH -(V2)-> VLT. amountInRaw MUST equal the contract's
-  // swapUsdcToVlt / spend amount. Output recipient = UR MSG_SENDER (helper-independent).
+  // USDC -(V3 `v3Fee`)-> WETH -(V2)-> VLT; the tier comes from builtinTier() (deepest pool).
+  // amountInRaw MUST equal the contract's swapUsdcToVlt / spend amount. Output recipient =
+  // UR MSG_SENDER (helper-independent).
   function buildVltRouteSwapData(amountInRaw, usdc, vlt, v3Fee) {
     v3Fee = v3Fee || 500;
     var MSG_SENDER = "0x0000000000000000000000000000000000000001";
@@ -410,6 +411,26 @@
   // fetch the calldata from an external routing service (the production path). Returns {data, src};
   // any API failure falls back to the built-in route so dev never breaks.
   var BUILTIN_ROUTE = "USDC →(V3 0.05%) WETH →(V2 0.30%) VLT";
+  // Depth-aware tier for the BUILT-IN fallback: when the SDK optimizer is unavailable (the very
+  // scenario this path exists for), pick the deepest-liquidity V3 USDC/WETH tier from plain
+  // web3 reads — the best execution proxy computable without quoting machinery (L units are
+  // comparable across tiers of the same pair at the same price). Defaults to 0.05% if even the
+  // pool reads fail, matching the old hardcode.
+  async function builtinTier() {
+    try {
+      var pp = await readPoolParams();
+      var best = null;
+      for (var i = 0; i < (pp.v3Pools || []).length; i++) {
+        var c = pp.v3Pools[i];
+        if (!best || toBN(c.liquidity).gt(toBN(best.liquidity))) best = c;
+      }
+      if (best) return Number(best.fee);
+    } catch (e) {}
+    return 500;
+  }
+  function builtinRouteText(fee) {
+    return "USDC →(V3 " + (fee / 10000) + "%) WETH →(V2 0.30%) VLT";
+  }
   async function getZapSwapData(swapRaw) {
     if (state.useRoutingApi) {
       try {
@@ -417,10 +438,12 @@
         if (sdk && sdk.calldata) return { data: sdk.calldata, src: "Uniswap SDK", route: sdk.routeText || BUILTIN_ROUTE };
       } catch (e) {
         logEntry("SDK route failed (" + errText(e) + ") — using built-in route", "err");
-        return { data: buildVltRouteSwapData(swapRaw, state.tokens.usdc, state.tokens.vlt), src: "built-in (SDK failed)", route: BUILTIN_ROUTE };
+        var tf = await builtinTier();
+        return { data: buildVltRouteSwapData(swapRaw, state.tokens.usdc, state.tokens.vlt, tf), src: "built-in (SDK failed)", route: builtinRouteText(tf) };
       }
     }
-    return { data: buildVltRouteSwapData(swapRaw, state.tokens.usdc, state.tokens.vlt), src: "built-in route", route: BUILTIN_ROUTE };
+    var tier = await builtinTier();
+    return { data: buildVltRouteSwapData(swapRaw, state.tokens.usdc, state.tokens.vlt, tier), src: "built-in route", route: builtinRouteText(tier) };
   }
   // Read live V3 USDC/WETH + V2 WETH/VLT pool state via the read provider and hand the raw values to
   // the bundled @uniswap/universal-router-sdk (window.UniswapRouting) to build + encode the calldata.
@@ -1259,7 +1282,12 @@
   // action. Hoisted function — also used by the preview static-calls above.
   async function txDeadline() {
     var blk = await state.readWeb3.eth.getBlock("latest");
-    return String(Number(blk.timestamp) + 1800);
+    // The margin is anchored to the LAST MINED block. On mainnet that is seconds old, so 30
+    // minutes bounds mempool staleness as intended. On an idle dev fork nothing mines between
+    // interactions while the node's clock (often evm_increaseTime-shifted) keeps flowing, so a
+    // 30-minute anchor to a stale block expires by the time the tx mines — use 7 days there
+    // (a private fork has no mempool to guard against).
+    return String(Number(blk.timestamp) + (state.dev ? 604800 : 1800));
   }
   async function doDeposit() {
     try {
