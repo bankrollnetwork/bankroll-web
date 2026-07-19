@@ -36,7 +36,13 @@
   var AGGREGATOR_ABI = [{ name: "latestAnswer", inputs: [], outputs: [{ type: "int256", name: "" }], stateMutability: "view", type: "function" }];
   var PUBLIC_MAINNET_RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://cloudflare-eth.com"];
   // Pools the in-browser Uniswap-SDK route reads (mainnet; present on the fork).
-  var V3_USDC_WETH_POOL = "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640"; // USDC/WETH 0.05% (tickSpacing 10)
+  // Candidate USDC/WETH V3 pools (mainnet) — the optimizer quotes every tier and picks the best.
+  var V3_USDC_WETH_POOLS = [
+    { fee: 500, tickSpacing: 10, addr: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640" },  // 0.05%
+    { fee: 3000, tickSpacing: 60, addr: "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8" }, // 0.30%
+    { fee: 100, tickSpacing: 1, addr: "0xe0554a476a092703abdb3ef35c80e0d76d32939f" },   // 0.01%
+  ];
+  var V2_USDC_WETH_PAIR = "0xb4e16d0168e52d35cacd2c6185b44281ec28c9dc"; // USDC/WETH
   var V2_WETH_VLT_PAIR = "0x966053ca4fca049173eb1f27e4cb168ccb794534"; // WETH/VLT
   var V3POOL_ABI = [
     { name: "slot0", stateMutability: "view", type: "function", inputs: [], outputs: [
@@ -397,23 +403,75 @@
   // Live V3 USDC/WETH + V2 WETH/VLT pool state + token metadata, shaped as the routing bundle's
   // shared params (see uniswap-routing-entry.js buildContext). Used by both the zap route
   // (Deposit tab) and the Swap tab quotes. Sequential reads per the read-provider etiquette.
+  // All venue state the route optimizer can use, read sequentially (RPC discipline) and cached
+  // for 15s — the reverse estimator calls buildSwap up to 4x per quote, all local math after
+  // this one read. A venue that fails to read is simply absent from the candidate set.
   async function readPoolParams() {
+    var now = Date.now();
+    if (state._poolParams && now - state._poolParams.t < 15000) return state._poolParams.p;
     var w = state.readWeb3;
-    var v3 = new w.eth.Contract(V3POOL_ABI, V3_USDC_WETH_POOL);
+
+    var v3Pools = [];
+    for (var i = 0; i < V3_USDC_WETH_POOLS.length; i++) {
+      var cfg = V3_USDC_WETH_POOLS[i];
+      try {
+        var c3 = new w.eth.Contract(V3POOL_ABI, cfg.addr);
+        var s0 = await c3.methods.slot0().call();
+        var lq = await c3.methods.liquidity().call();
+        if (toBN(String(lq)).gtn(0)) {
+          v3Pools.push({ fee: cfg.fee, tickSpacing: cfg.tickSpacing, sqrtPriceX96: String(s0.sqrtPriceX96 || s0[0]), tick: String(s0.tick || s0[1]), liquidity: String(lq) });
+        }
+      } catch (e) {}
+    }
+
     var v2 = new w.eth.Contract(V2PAIR_ABI, V2_WETH_VLT_PAIR);
-    var s0 = await v3.methods.slot0().call();
-    var liq = await v3.methods.liquidity().call();
     var res = await v2.methods.getReserves().call();
     var wethIs0 = (await v2.methods.token0().call()).toLowerCase() === WETH.toLowerCase();
-    return {
+
+    var v2Usdc = null;
+    try {
+      var uw = new w.eth.Contract(V2PAIR_ABI, V2_USDC_WETH_PAIR);
+      var ures = await uw.methods.getReserves().call();
+      var uWethIs0 = (await uw.methods.token0().call()).toLowerCase() === WETH.toLowerCase();
+      v2Usdc = { usdcReserve: String(uWethIs0 ? ures[1] : ures[0]), wethReserve: String(uWethIs0 ? ures[0] : ures[1]) };
+    } catch (e) {}
+
+    // The vault's own V4 pool (exists once deployed): sqrtPrice + ACTIVE liquidity straight from
+    // PoolManager storage (StateLibrary layout: slot0 at +0, liquidity at +3). The Swap tab uses
+    // it as a venue-neutral candidate; zap deposit/redeem paths exclude it (includeV4: false).
+    var v4 = null;
+    try {
+      if (state.poolKeyObj && state.poolMgrAddr) {
+        var k = state.poolKeyObj;
+        var poolId = web3.utils.keccak256(web3.eth.abi.encodeParameters(
+          ["address", "address", "uint24", "int24", "address"],
+          [k.currency0, k.currency1, k.fee, k.tickSpacing, k.hooks]));
+        var slot = web3.utils.soliditySha3({ t: "bytes32", v: poolId }, { t: "uint256", v: POOLS_SLOT });
+        var pm = new w.eth.Contract(POOLMANAGER_ABI, state.poolMgrAddr);
+        var word0 = await pm.methods.extsload(slot).call();
+        var sqrtP = toBN(word0).and(toBN("0x" + "f".repeat(40)));
+        var liqSlot = "0x" + toBN(slot).addn(3).toString(16, 64);
+        var wordL = await pm.methods.extsload(liqSlot).call();
+        var v4Liq = toBN(wordL);
+        if (sqrtP.gtn(0) && v4Liq.gtn(0)) {
+          v4 = { sqrtPriceX96: sqrtP.toString(), liquidity: v4Liq.toString(), fee: Number(k.fee), tickSpacing: Number(k.tickSpacing) };
+        }
+      }
+    } catch (e) {}
+
+    var p = {
       chainId: 1,
       slippageBps: state.slippageBps,
       usdc: { address: state.tokens.usdc || MAINNET_USDC, decimals: state.tokens.usdcDec || 6 },
       weth: { address: WETH },
       vlt: { address: state.tokens.vlt || MAINNET_VLT, decimals: state.tokens.vltDec || 18 },
-      v3: { fee: 500, tickSpacing: 10, sqrtPriceX96: String(s0.sqrtPriceX96 || s0[0]), tick: String(s0.tick || s0[1]), liquidity: String(liq) },
+      v3Pools: v3Pools,
       v2: { wethReserve: String(wethIs0 ? res[0] : res[1]), vltReserve: String(wethIs0 ? res[1] : res[0]) },
+      v2Usdc: v2Usdc,
+      v4: v4,
     };
+    state._poolParams = { t: now, p: p };
+    return p;
   }
   async function sdkRouteSwapData(swapRaw) {
     if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwapData) {
@@ -517,7 +575,7 @@
       var outDec = swapDec(t.tout);
       setField("swp-out-est", usdEq(swapUsd(t.tout, r.quotedOut)));
       renderSwapRoute([
-        ["route", r.routeText || "—"],
+        ["route", (r.routeText || "—") + (r.bestOf > 1 ? " · best of " + r.bestOf : "")],
         ["minimum received", fmtT(r.minOut, outDec) + " " + t.tout],
         ["slippage", (state.slippageBps / 100) + "%"],
       ]);
@@ -1318,6 +1376,7 @@
         p.amountIn = sellRaw.toString();
         p.recipient = state.cfg.zap; // the helper measures its own balance delta
         p.deadline = deadline;
+        p.includeV4 = false; // exit legs never self-trade the vault's own pool
         var r = await UniswapRouting.buildSwap(p);
         swapData = r.calldata;
         minTotal = expUsdc.add(toBN(r.minOut));
@@ -1621,6 +1680,7 @@
 
   // ── wiring ─────────────────────────────────────────────────────────────────
   function reload() {
+    state._poolParams = null;
     saveConfig();
     buildReadContracts();
     buildWriteContracts();
@@ -1647,6 +1707,7 @@
   // "Your Stats" (identity + balances; refreshBalances also re-renders approvals + balance chips)
   // and the panels (vault stats, price, claimable, fee APR), so no panel needs its own button.
   function refreshAll(btn) {
+    state._poolParams = null; // manual refresh requotes fresh venue state
     spinDuring(btn, (async function () {
       if (window.web3 && state.account) {
         try {
