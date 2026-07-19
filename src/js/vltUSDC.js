@@ -1070,6 +1070,13 @@
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
+  // Tx-modal action line: escape the label FIRST (amounts are user-typed), then decorate the
+  // token symbols with logos (vltUSDC gets the pair badge; ETH/WETH/USDC/VLT via routeHtml).
+  function labelHtml(label) {
+    var s = escapeHtml(label);
+    s = s.replace(/\bvltUSDC\b/g, sharesHtml());
+    return routeHtml(s);
+  }
   function openTxModal(variant, title, bodyHtml) {
     var t = document.getElementById("tx-modal-title");
     t.textContent = title; t.className = "modal-title " + variant;
@@ -1081,7 +1088,7 @@
     var url = explorerTxUrl(hash);
     var blk = (rec && rec.blockNumber != null) ? rec.blockNumber : null;
     openTxModal("tx-ok", "Transaction confirmed",
-      '<p class="tx-kv"><b>action</b><br>' + escapeHtml(label) + "</p>" +
+      '<p class="tx-kv"><b>action</b><br>' + labelHtml(label) + "</p>" +
       '<p class="tx-kv"><b>tx hash</b></p><div class="tx-mono">' + escapeHtml(hash) + "</div>" +
       (blk != null ? '<p class="tx-kv" style="margin-top:10px"><b>block</b> ' + blk + "</p>" : "") +
       '<div class="tx-actions">' +
@@ -1094,7 +1101,7 @@
   }
   function showTxError(label, e) {
     openTxModal("tx-err", "Transaction failed",
-      '<p class="tx-kv"><b>action</b><br>' + escapeHtml(label) + "</p>" +
+      '<p class="tx-kv"><b>action</b><br>' + labelHtml(label) + "</p>" +
       '<p class="tx-kv"><b>error</b></p><div class="tx-mono tx-err-detail">' + escapeHtml(errText(e)) + "</div>");
   }
   async function runTx(label, sendPromise) {
