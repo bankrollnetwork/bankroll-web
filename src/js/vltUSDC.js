@@ -113,6 +113,16 @@
     if (k !== "eth" && k !== "usdc" && k !== "vlt") return sym;
     return '<img class="tok-ic" src="img/logo/coingecko/' + k + '.png" alt=""> ' + sym;
   }
+  // Decorate a route path string ("USDC →(V3 0.05%) WETH →(V2 0.30%) VLT") with token logos.
+  // WETH wears the ETH logo (wrapped ETH). Safe on arbitrary status strings — it only touches
+  // whole-word symbols.
+  function routeHtml(txt) {
+    if (!txt) return txt;
+    return String(txt).replace(/\b(WETH|ETH|USDC|VLT)\b/g, function (m) {
+      var k = m === "WETH" ? "eth" : m.toLowerCase();
+      return '<img class="tok-ic" src="img/logo/coingecko/' + k + '.png" alt=""> ' + m;
+    });
+  }
   // The share token: overlapped VLT+USDC badge ahead of "vltUSDC" (it wraps both).
   function sharesHtml() {
     return '<span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt="">' +
@@ -589,7 +599,7 @@
       var outDec = swapDec(t.tout);
       setField("swp-out-est", usdEq(swapUsd(t.tout, r.quotedOut)));
       renderSwapRoute([
-        ["route", (r.routeText || "—") + (r.bestOf > 1 ? " · best of " + r.bestOf : "")],
+        ["route", routeHtml(r.routeText || "—") + (r.bestOf > 1 ? " · best of " + r.bestOf : "")],
         ["minimum received", fmtT(r.minOut, outDec) + " " + tokHtml(t.tout)],
         ["slippage", (state.slippageBps / 100) + "%"],
       ]);
@@ -949,7 +959,7 @@
     var usdcForLp = toBN(totalRaw).sub(toBN(swapRaw)).toString();
     // Rows shared by every state: route, the swap/keep split, and the live pool price.
     function baseRows(routeStr) {
-      var rows = [["route", routeStr], ["split", "swap " + fmtU(swapRaw) + " · keep " + fmtU(usdcForLp) + " " + tokHtml("USDC")]];
+      var rows = [["route", routeHtml(routeStr)], ["split", "swap " + fmtU(swapRaw) + " · keep " + fmtU(usdcForLp) + " " + tokHtml("USDC")]];
       if (state.priceUsdcPerVlt) rows.push(["price", "~$" + state.priceUsdcPerVlt.toFixed(4) + "/VLT"]);
       return rows;
     }
