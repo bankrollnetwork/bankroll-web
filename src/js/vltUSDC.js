@@ -104,6 +104,20 @@
   // ── helpers ────────────────────────────────────────────────────────────────
   function $f(name) { return document.querySelector('[data-field="' + name + '"]'); }
   function setField(name, val) { var el = $f(name); if (el) el.textContent = val; }
+  // HTML-capable setter for values that embed token logos — only ever fed client-formatted
+  // numbers plus the fixed <img> tags below (never user/chain strings).
+  function setFieldHtml(name, html) { var el = $f(name); if (el) el.innerHTML = html; }
+  // "logo + symbol", logo ahead of the text, for the three base tokens.
+  function tokHtml(sym) {
+    var k = String(sym).toLowerCase();
+    if (k !== "eth" && k !== "usdc" && k !== "vlt") return sym;
+    return '<img class="tok-ic" src="img/logo/coingecko/' + k + '.png" alt=""> ' + sym;
+  }
+  // The share token: overlapped VLT+USDC badge ahead of "vltUSDC" (it wraps both).
+  function sharesHtml() {
+    return '<span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt="">' +
+      '<img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC';
+  }
   function short(a) { return a ? a.slice(0, 6) + "…" + a.slice(-4) : "-"; }
   function note(id, msg, cls) {
     var el = $f(id); if (!el) return;
@@ -289,8 +303,8 @@
             Number(formatUnits(String(pVltRaw), state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
           state.navPerShareUsdc = posUsd / Number(supply);
           // Pool = the position's underlying token amounts; TVL = its USD value (principal, at live price).
-          setField("vs-pool", localize(formatUnits(String(pVltRaw), state.tokens.vltDec, 2)) + " VLT | " +
-            localize(formatUnits(String(pUsdcRaw), state.tokens.usdcDec, 2)) + " USDC");
+          setFieldHtml("vs-pool", localize(formatUnits(String(pVltRaw), state.tokens.vltDec, 2)) + " " + tokHtml("VLT") + " | " +
+            localize(formatUnits(String(pUsdcRaw), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC"));
           setField("vs-tvl", "$" + localize(posUsd.toFixed(2)));
         } else { state.navPerShareUsdc = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
       } catch (e) { state.navPerShareUsdc = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
@@ -345,9 +359,9 @@
     setField("vlt-usd", usdEq(Number(formatUnits(state.bal.vlt, state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0)));
     setField("shares-usd", usdEq(Number(state.bal.shares) * (state.navPerShareUsdc || 0)));
     // Underlying VLT | USDC these shares represent (blank until previewRedeem resolves).
-    setField("shares-parts", (state.bal.sharesVlt != null)
-      ? localize(formatUnits(String(state.bal.sharesVlt), state.tokens.vltDec, 2)) + " VLT | " +
-        localize(formatUnits(String(state.bal.sharesUsdc), state.tokens.usdcDec, 2)) + " USDC"
+    setFieldHtml("shares-parts", (state.bal.sharesVlt != null)
+      ? localize(formatUnits(String(state.bal.sharesVlt), state.tokens.vltDec, 2)) + " " + tokHtml("VLT") + " | " +
+        localize(formatUnits(String(state.bal.sharesUsdc), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC")
       : "");
   }
 
@@ -576,7 +590,7 @@
       setField("swp-out-est", usdEq(swapUsd(t.tout, r.quotedOut)));
       renderSwapRoute([
         ["route", (r.routeText || "—") + (r.bestOf > 1 ? " · best of " + r.bestOf : "")],
-        ["minimum received", fmtT(r.minOut, outDec) + " " + t.tout],
+        ["minimum received", fmtT(r.minOut, outDec) + " " + tokHtml(t.tout)],
         ["slippage", (state.slippageBps / 100) + "%"],
       ]);
     } catch (e) {
@@ -896,7 +910,7 @@
       if (toBN(totalRaw).lten(0)) { setField("zap-out", ""); return; }
       var totalUsd = Number(formatUnits(totalRaw, state.tokens.usdcDec));
       var shares = state.zapExpShares || estSharesFromUsd(totalUsd);
-      setField("zap-out", (toBN(shares).gtn(0) ? fmtT(shares, state.tokens.sharesDec) + " vltUSDC " : "") + "≈ $" + totalUsd.toFixed(2));
+      setFieldHtml("zap-out", (toBN(shares).gtn(0) ? fmtT(shares, state.tokens.sharesDec) + " " + sharesHtml() + " " : "") + "≈ $" + totalUsd.toFixed(2));
     } catch (e) { setField("zap-out", ""); }
   }
   // Render the zap route as a key/value table (like the stats grid) plus an optional status/error
@@ -935,7 +949,7 @@
     var usdcForLp = toBN(totalRaw).sub(toBN(swapRaw)).toString();
     // Rows shared by every state: route, the swap/keep split, and the live pool price.
     function baseRows(routeStr) {
-      var rows = [["route", routeStr], ["split", "swap " + fmtU(swapRaw) + " · keep " + fmtU(usdcForLp) + " USDC"]];
+      var rows = [["route", routeStr], ["split", "swap " + fmtU(swapRaw) + " · keep " + fmtU(usdcForLp) + " " + tokHtml("USDC")]];
       if (state.priceUsdcPerVlt) rows.push(["price", "~$" + state.priceUsdcPerVlt.toFixed(4) + "/VLT"]);
       return rows;
     }
@@ -994,8 +1008,8 @@
       // line above (upgraded below from the NAV estimate to this exact static-call figure).
       state.zapExpShares = expShares;
       setRoute(baseRows(routeStr).concat([
-        ["minimum VLT", fmtT(minVlt, vltDec) + " VLT"],
-        ["minimum vltUSDC", fmtT(minShares, sharesDec) + " vltUSDC"],
+        ["minimum VLT", fmtT(minVlt, vltDec) + " " + tokHtml("VLT")],
+        ["minimum vltUSDC", fmtT(minShares, sharesDec) + " " + sharesHtml()],
         ["slippage", slipPct + "%"],
       ]));
       zapPreview(); // undebounced: refresh the recv line now that the exact figure is known
@@ -1183,7 +1197,7 @@
       // "you receive ≈" readout (right-aligned under the input, render-when-available) — same UX as zap/redeem.
       var price = state.priceUsdcPerVlt || 0;
       var pstr = price.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
-      setField("dep-out", fmtT(shares, state.tokens.sharesDec) + " vltUSDC · min " +
+      setFieldHtml("dep-out", fmtT(shares, state.tokens.sharesDec) + " " + sharesHtml() + " · min " +
         fmtT(minShares, state.tokens.sharesDec) + " (−" + (state.slippageBps / 100) + "% slippage)" +
         (price > 0 ? " · @ $" + pstr + " / VLT" : ""));
     } catch (e) { $("#dep-minshares").val("0"); setField("dep-out", ""); /* over balance / not-yet-valid */ }
@@ -1299,9 +1313,9 @@
       if ($("#red-usdc-only").is(":checked")) {
         // Sync estimate at the pool price; the send path quotes the real external route and
         // enforces the aggregate minUsdcOut on-chain.
-        setField("red-out", "~" + usd.toFixed(2) + " USDC (VLT half sold via Uniswap)");
+        setFieldHtml("red-out", "~" + usd.toFixed(2) + " " + tokHtml("USDC") + " (VLT half sold via Uniswap)");
       } else {
-        setField("red-out", formatUnits(vltRaw, state.tokens.vltDec, 6) + " VLT + " + formatUnits(usdcRaw, state.tokens.usdcDec, 6) + " USDC ≈ $" + usd.toFixed(2));
+        setFieldHtml("red-out", formatUnits(vltRaw, state.tokens.vltDec, 6) + " " + tokHtml("VLT") + " + " + formatUnits(usdcRaw, state.tokens.usdcDec, 6) + " " + tokHtml("USDC") + " ≈ $" + usd.toFixed(2));
       }
       renderRedeemReadout();
       note("red-note", " ");
@@ -1404,13 +1418,13 @@
       var valueUsdc = c.valueUsdc || c[2];
       var min = await state.read.vault.methods.AUTO_COMPOUND_MIN_USDC().call();
       var above = web3.utils.toBN(valueUsdc).gte(web3.utils.toBN(min));
-      setField("vs-claimable", formatUnits(valueUsdc, 6, 2) + " USDC" + (above ? " ✓ next deposit compounds" : ""));
-      setField("vs-trigger", formatUnits(min, 6, 0) + " USDC");
+      setFieldHtml("vs-claimable", formatUnits(valueUsdc, 6, 2) + " " + tokHtml("USDC") + (above ? " ✓ next deposit compounds" : ""));
+      setFieldHtml("vs-trigger", formatUnits(min, 6, 0) + " " + tokHtml("USDC"));
       // Lifetime realized fees (on-chain counters; always == Σ Compound + Σ FeesRetained events).
       var fVlt = await state.read.vault.methods.totalFeesVlt().call();
       var fUsdc = await state.read.vault.methods.totalFeesUsdc().call();
-      setField("vs-fees", localize(formatUnits(String(fVlt), state.tokens.vltDec, 2)) + " VLT | " +
-        localize(formatUnits(String(fUsdc), state.tokens.usdcDec, 2)) + " USDC");
+      setFieldHtml("vs-fees", localize(formatUnits(String(fVlt), state.tokens.vltDec, 2)) + " " + tokHtml("VLT") + " | " +
+        localize(formatUnits(String(fUsdc), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC"));
     } catch (e) { console.error("[vault-test] compoundClaimable read error:", e); }
   }
 

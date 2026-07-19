@@ -87,6 +87,12 @@
         .tok-ic { display: inline-block; width: 18px; height: 18px; border-radius: 50%; vertical-align: -4px; } /* inline-block: the theme resets img to block */
         .vt-kv .tok-ic { width: 16px; height: 16px; vertical-align: -3px; }
         .vt-lab { display: inline-flex; align-items: center; gap: 6px; }
+        /* Overlapped VLT+USDC badge for the share token (it wraps both). Dark ring on the
+           overlapping icon so the two circles read as distinct. */
+        .tok-pair { display: inline-flex; align-items: center; vertical-align: -4px; }
+        .tok-pair .tok-ic { vertical-align: baseline; }
+        .tok-pair .tok-ic + .tok-ic { margin-left: -7px; box-shadow: 0 0 0 2px rgba(22, 12, 26, 0.9); }
+        .sc-sub .tok-ic, .sc-usd .tok-ic { width: 14px; height: 14px; vertical-align: -3px; }
         /* Swap token select with the token's logo overlaid on the left (updated by the client
            when the selection changes). Container owns the flex sizing the bare select had. */
         .vt-tok-sel { position: relative; flex: 0 0 132px; }
@@ -317,7 +323,7 @@
                             <div class="vt-kv"><span>TVL</span><strong data-field="vs-tvl">-</strong></div>
                             <div class="vt-kv"><span>Pool</span><strong data-field="vs-pool">-</strong></div>
                             <div class="vt-kv"><span>positionLiquidity (L)</span><strong data-field="vs-liq">-</strong></div>
-                            <div class="vt-kv"><span>totalSupply (vltUSDC)</span><strong data-field="vs-supply">-</strong></div>
+                            <div class="vt-kv"><span>totalSupply (<span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC)</span><strong data-field="vs-supply">-</strong></div>
                             <div class="vt-kv"><span>L per share</span><strong data-field="vs-pershare">-</strong></div>
                             <div class="vt-kv"><span>lifetime L/share growth</span><strong data-field="vs-feegrowth">-</strong></div>
                             <div class="vt-kv"><span>7d APR</span><strong data-field="vs-apr7">-</strong></div>
@@ -393,7 +399,7 @@
                             <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/eth.png" alt=""> ETH</span><strong data-field="eth">-</strong><small class="sc-usd" data-field="eth-usd"></small></div>
                             <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span><strong data-field="usdc">-</strong></div>
                             <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</span><strong data-field="vlt">-</strong><small class="sc-usd" data-field="vlt-usd"></small></div>
-                            <div class="vt-kv"><span>vltUSDC</span><strong data-field="shares">-</strong><small class="sc-sub" data-field="shares-parts"></small><small class="sc-usd" data-field="shares-usd"></small></div>
+                            <div class="vt-kv"><span><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</span><strong data-field="shares">-</strong><small class="sc-sub" data-field="shares-parts"></small><small class="sc-usd" data-field="shares-usd"></small></div>
                         </div>
                     </div>
 
@@ -489,7 +495,7 @@
                             <div><h2>Withdraw</h2><p>Burn vltUSDC, receive both tokens in kind — or take USDC only via the zap route</p></div>
                         </div>
                         <div class="vt-row">
-                            <label for="red-shares">shares (vltUSDC) <span class="vt-bal" data-token="shares" data-target="red-shares" title="click to use full balance">…</span></label>
+                            <label for="red-shares"><span class="vt-lab"><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> shares (vltUSDC)</span> <span class="vt-bal" data-token="shares" data-target="red-shares" title="click to use full balance">…</span></label>
                             <div class="vt-slip-row" style="margin:2px 0 4px;">
                                 <input type="range" id="red-slider" min="0" max="100" step="1" value="0" title="withdraw % of your share balance">
                                 <span class="vt-hint" data-field="red-pct" style="white-space:nowrap">0%</span>
