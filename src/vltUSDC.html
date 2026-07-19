@@ -93,6 +93,12 @@
         .tok-pair .tok-ic { vertical-align: baseline; }
         .tok-pair .tok-ic:first-child { position: relative; z-index: 1; box-shadow: 0 0 0 2px rgba(22, 12, 26, 0.9); }
         .tok-pair .tok-ic + .tok-ic { margin-left: -7px; }
+        /* Large badge for headings (the pre-connect hero title): em-sized so it tracks the
+           heading's font size and shrinks with it on mobile. Same VLT-on-top z-order. */
+        .tok-pair-lg { vertical-align: -0.08em; margin-right: 0.12em; }
+        .tok-pair-lg .tok-ic { width: 0.72em; height: 0.72em; }
+        .tok-pair-lg .tok-ic:first-child { box-shadow: 0 0 0 0.05em rgba(22, 12, 26, 0.9); }
+        .tok-pair-lg .tok-ic + .tok-ic { margin-left: -0.26em; }
         .sc-sub .tok-ic, .sc-usd .tok-ic { width: 14px; height: 14px; vertical-align: -3px; }
         /* Swap token select with the token's logo overlaid on the left (updated by the client
            when the selection changes). Container owns the flex sizing the bare select had. */
@@ -238,7 +244,7 @@
             <div class="subpage-inner">
                 <div class="subpage-copy reveal is-visible">
                     <p class="eyebrow">Uniswap V4 liquidity vault</p>
-                    <h1>vltUSDC</h1>
+                    <h1><span class="tok-pair tok-pair-lg"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</h1>
                     <p class="lead">Auto-compounding VLT/USDC liquidity on Uniswap V4. Deposit both tokens — or zap in with USDC alone — to mint vltUSDC and earn trading fees, reinvested into your position automatically so your shares keep growing while you hold.</p>
                 </div>
             </div>
