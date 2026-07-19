@@ -273,7 +273,7 @@
       var liq = await v.positionLiquidity().call();
       var supply = await v.totalSupply().call();
       setField("vs-liq", compact(liq));
-      setField("vs-supply", compact(supply));
+      setFieldHtml("vs-supply", compact(supply) + " " + sharesHtml());
       var per = (Number(supply) > 0) ? (Number(liq) / (Number(supply) / Math.pow(10, sdec))) : 0;
       setField("vs-pershare", per ? (sdec === 0 ? per.toFixed(4) : per.toExponential(4)) : "0");
       // Lifetime fee growth % from L/share (price-neutral, 0 at launch). All three APRs
