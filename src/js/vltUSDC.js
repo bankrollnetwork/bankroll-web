@@ -94,6 +94,7 @@
     zapExpShares: null, // exact shares from the last successful zap static call (else NAV estimate)
     swapSeq: 0, // sequence guard for the async Swap-tab quote
     swapSide: "in", // which Swap box the user last edited ("in" | "out") — drives the quote direction
+    redSeq: 0, // sequence guard for the async USDC-only withdraw estimate
     swapPerm: { usdc: false, vlt: false }, // Permit2 approval state (ERC20→Permit2 AND Permit2→UR)
     gwei: 0, ethUsd: 0, // live mainnet gas (gwei) + ETH/USD (0 = not fetched yet), set by fetchMainnetPrices()
     useRoutingApi: false, // build zap swapData with the in-browser Uniswap SDK instead of built-in
@@ -1328,9 +1329,40 @@
       // USD value of the in-kind output (USDC side at par + VLT side at the live pool price).
       var usd = Number(formatUnits(usdcRaw, state.tokens.usdcDec)) + Number(formatUnits(vltRaw, state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
       if ($("#red-usdc-only").is(":checked")) {
-        // Sync estimate at the pool price; the send path quotes the real external route and
-        // enforces the aggregate minUsdcOut on-chain.
-        setFieldHtml("red-out", "~" + usd.toFixed(2) + " " + tokHtml("USDC") + " (VLT half sold via Uniswap)");
+        // Route-quoted estimate, so the form agrees with the tx modal's enforced minimum: the
+        // VLT leg is valued on the ACTUAL external sell route, not the V4 pool price (the two
+        // venues can diverge). Same math as doZapRedeem: total = redeemed USDC + route quote,
+        // min = redeemed USDC + route minOut at the configured slippage.
+        var seq = ++state.redSeq;
+        setFieldHtml("red-out", "~" + usd.toFixed(2) + " " + tokHtml("USDC") + " (quoting route…)");
+        try {
+          if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwap || !state.cfg.zap) {
+            throw new Error("no-routing");
+          }
+          var sellRaw = toBN(vltRaw).muln(9995).divn(10000); // the 0.05% shave doZapRedeem encodes
+          var quoted = toBN("0"), minOut = toBN("0");
+          if (sellRaw.gtn(0)) {
+            var p = await readPoolParams();
+            if (seq !== state.redSeq) return;
+            p.tokenIn = "VLT"; p.tokenOut = "USDC";
+            p.amountIn = sellRaw.toString();
+            p.recipient = state.cfg.zap;
+            p.deadline = DEADLINE; // display only — doZapRedeem rebuilds with a live deadline
+            p.includeV4 = false; // exit legs never self-trade the vault's own pool
+            var r = await UniswapRouting.buildSwap(p);
+            if (seq !== state.redSeq) return;
+            quoted = toBN(r.quotedOut); minOut = toBN(r.minOut);
+          }
+          var totalRaw = toBN(usdcRaw).add(quoted);
+          var minRaw = toBN(usdcRaw).add(minOut);
+          setFieldHtml("red-out",
+            "≈ " + formatUnits(totalRaw.toString(), state.tokens.usdcDec, 6) + " " + tokHtml("USDC") +
+            " · min " + formatUnits(minRaw.toString(), state.tokens.usdcDec, 6));
+        } catch (e2) {
+          if (seq === state.redSeq) {
+            setFieldHtml("red-out", "~" + usd.toFixed(2) + " " + tokHtml("USDC") + " (pool-price estimate — route unavailable)");
+          }
+        }
       } else {
         setFieldHtml("red-out", formatUnits(vltRaw, state.tokens.vltDec, 6) + " " + tokHtml("VLT") + " + " + formatUnits(usdcRaw, state.tokens.usdcDec, 6) + " " + tokHtml("USDC") + " ≈ $" + usd.toFixed(2));
       }
