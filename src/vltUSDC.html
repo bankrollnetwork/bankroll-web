@@ -152,6 +152,10 @@
         .vt-slip-row { display: flex; align-items: center; gap: 14px; }
         /* Themed range slider: track = input-field background, thumb = card background. */
         .vt-slip-row input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; border: 0; padding: 0; }
+        /* No focus ring: browsers mark range inputs focus-visible even on mouse click (they're
+           keyboard-adjustable), which flashed a border around the whole control. The live %
+           readout beside the slider is the state cue. */
+        .vt-slip-row input[type=range]:focus, .vt-slip-row input[type=range]:focus-visible { outline: none; box-shadow: none; }
         /* Filled (selected) = input-field bg; remaining (unselected) = grey border color. The fill
            split is driven by --fill (set per-value in JS) for webkit; Firefox uses range-progress. */
         .vt-slip-row input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: linear-gradient(to right, rgba(255,255,255,0.04) var(--fill,0%), rgba(255,255,255,0.18) var(--fill,0%)); }
