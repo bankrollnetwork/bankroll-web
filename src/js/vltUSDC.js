@@ -1238,18 +1238,100 @@
       var vltRaw = String(r.vltAmount || r[0]), usdcRaw = String(r.usdcAmount || r[1]);
       // USD value of the in-kind output (USDC side at par + VLT side at the live pool price).
       var usd = Number(formatUnits(usdcRaw, state.tokens.usdcDec)) + Number(formatUnits(vltRaw, state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
-      setField("red-out", formatUnits(vltRaw, state.tokens.vltDec, 6) + " VLT + " + formatUnits(usdcRaw, state.tokens.usdcDec, 6) + " USDC ≈ $" + usd.toFixed(2));
+      if ($("#red-usdc-only").is(":checked")) {
+        // Sync estimate at the pool price; the send path quotes the real external route and
+        // enforces the aggregate minUsdcOut on-chain.
+        setField("red-out", "~" + usd.toFixed(2) + " USDC (VLT half sold via Uniswap)");
+      } else {
+        setField("red-out", formatUnits(vltRaw, state.tokens.vltDec, 6) + " VLT + " + formatUnits(usdcRaw, state.tokens.usdcDec, 6) + " USDC ≈ $" + usd.toFixed(2));
+      }
       renderRedeemReadout();
       note("red-note", " ");
     } catch (e) { note("red-note", errText(e), "vt-warn"); }
   }
   async function doRedeem() {
+    if ($("#red-usdc-only").is(":checked")) return doZapRedeem();
     try {
       requireConnected();
       var sharesRaw = parseUnits($("#red-shares").val(), state.tokens.sharesDec);
       // In-kind, no slippage bound (can't be sandwiched for value); pays out to the connected wallet.
       await runTx("redeem(" + $("#red-shares").val() + " shares)",
         state.write.vault.methods.redeem(sharesRaw, state.account).send({ from: state.account }));
+    } catch (e) { note("red-note", errText(e), "vt-warn"); }
+  }
+  // EIP-2612 permit over the vltUSDC shares (OZ ERC20Permit domain: token name, version "1").
+  // Signed via the wallet's eth_signTypedData_v4; consumed by zapRedeemWithPermit in the same tx.
+  async function signSharePermit(valueRaw, deadline) {
+    var owner = state.account, spender = state.cfg.zap;
+    var nonce = String(await state.read.vault.methods.nonces(owner).call());
+    var chainId = Number(await web3.eth.getChainId());
+    var typed = {
+      types: {
+        EIP712Domain: [
+          { name: "name", type: "string" }, { name: "version", type: "string" },
+          { name: "chainId", type: "uint256" }, { name: "verifyingContract", type: "address" }
+        ],
+        Permit: [
+          { name: "owner", type: "address" }, { name: "spender", type: "address" },
+          { name: "value", type: "uint256" }, { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" }
+        ]
+      },
+      primaryType: "Permit",
+      domain: { name: "Bankroll VLT-USDC LP", version: "1", chainId: chainId, verifyingContract: state.cfg.vault },
+      message: { owner: owner, spender: spender, value: String(valueRaw), nonce: nonce, deadline: String(deadline) }
+    };
+    var sigHex = await web3.currentProvider.request({ method: "eth_signTypedData_v4", params: [owner, JSON.stringify(typed)] });
+    var raw = sigHex.slice(2);
+    var v = parseInt(raw.slice(128, 130), 16);
+    if (v < 27) v += 27;
+    return { v: v, r: "0x" + raw.slice(0, 64), s: "0x" + raw.slice(64, 128) };
+  }
+  // USDC-only exit: previewRedeem sizes the VLT sell leg, buildSwap routes it (output to the
+  // ZapHelper — it measures its own balance delta), a share permit replaces the approval, and
+  // zapRedeemWithPermit runs the whole thing in one transaction. The on-chain bound is the
+  // AGGREGATE minUsdcOut (redeemed USDC + route minOut at the configured slippage).
+  async function doZapRedeem() {
+    try {
+      requireConnected();
+      if (!state.cfg.zap) throw new Error("no ZapHelper configured (Config tab)");
+      if (typeof UniswapRouting === "undefined" || !UniswapRouting.buildSwap) {
+        throw new Error("uniswap-routing bundle not loaded (run npm run bundle:routing)");
+      }
+      var sharesRaw = parseUnits($("#red-shares").val(), state.tokens.sharesDec);
+      if (toBN(sharesRaw).lten(0)) throw new Error("enter shares");
+
+      var pr = await state.read.vault.methods.previewRedeem(sharesRaw).call();
+      var expVlt = toBN(String(pr.vltAmount || pr[0]));
+      var expUsdc = toBN(String(pr.usdcAmount || pr[1]));
+
+      // Encode the sell leg 0.05% under the preview: a drift between build and mine can only
+      // leave a VLT sliver (swept to the receiver), never make the router pull more than the
+      // redeem produced (which would revert).
+      var sellRaw = expVlt.muln(9995).divn(10000);
+      var deadline = await txDeadline();
+      var swapData = "0x";
+      var minTotal = expUsdc.muln(10000 - state.slippageBps).divn(10000);
+      if (sellRaw.gtn(0)) {
+        var p = await readPoolParams();
+        p.tokenIn = "VLT"; p.tokenOut = "USDC";
+        p.amountIn = sellRaw.toString();
+        p.recipient = state.cfg.zap; // the helper measures its own balance delta
+        p.deadline = deadline;
+        var r = await UniswapRouting.buildSwap(p);
+        swapData = r.calldata;
+        minTotal = expUsdc.add(toBN(r.minOut));
+      }
+
+      var sig = await signSharePermit(sharesRaw, deadline);
+      await runTx(
+        "zapRedeem " + $("#red-shares").val() + " shares -> USDC (min " + formatUnits(minTotal.toString(), state.tokens.usdcDec, 6) + " USDC)",
+        state.write.zap.methods.zapRedeemWithPermit(
+          sharesRaw, minTotal.toString(), deadline, state.account,
+          sig.v, sig.r, sig.s, swapData
+        ).send({ from: state.account })
+      );
+      redeemPreview();
     } catch (e) { note("red-note", errText(e), "vt-warn"); }
   }
   // Read what the next triggering deposit would auto-compound (retained balances + pending pool
@@ -1608,6 +1690,10 @@
     $("#dep-vlt-slider").on("input", function () { onDepSlider("vlt"); });
     $("#dep-usdc-slider").on("input", function () { onDepSlider("usdc"); });
     $("#red-shares").on("input", function () { syncRedeemSliderFromShares(); redeemPreviewDebounced(); });
+    $("#red-usdc-only").on("change", function () {
+      $("#red-go").text(this.checked ? "Withdraw as USDC" : "Withdraw");
+      redeemPreview();
+    });
     $("#red-slider").on("input", onRedeemSlider);
     $("#zap-usdc").on("input", function () { onZapTotal(false); }).on("change", function () { onZapTotal(true); });
     $("#zap-slider").on("input", onZapSlider);

@@ -486,7 +486,7 @@
                     <div class="calculator-panel reveal is-visible">
                         <div class="panel-heading">
                             <i class="simple-icon-minus" aria-hidden="true"></i>
-                            <div><h2>Withdraw</h2><p>Burn vltUSDC, receive both tokens in kind — no swap, no slippage</p></div>
+                            <div><h2>Withdraw</h2><p>Burn vltUSDC, receive both tokens in kind — or take USDC only via the zap route</p></div>
                         </div>
                         <div class="vt-row">
                             <label for="red-shares">shares (vltUSDC) <span class="vt-bal" data-token="shares" data-target="red-shares" title="click to use full balance">…</span></label>
@@ -496,6 +496,9 @@
                             </div>
                             <input id="red-shares" type="text" value="0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="red-out"></span></div>
+                        </div>
+                        <div class="vt-actions" style="margin-top:0; margin-bottom:4px;">
+                            <label class="vt-check"><input type="checkbox" id="red-usdc-only"> Receive <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC only <span class="vt-hint">(sells the VLT half via Uniswap — one signature + one transaction; route slippage applies)</span></label>
                         </div>
                         <div class="vt-actions">
                             <button class="button primary" id="red-go" type="button">Withdraw</button>
