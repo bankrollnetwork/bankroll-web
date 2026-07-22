@@ -20,9 +20,10 @@
   // Per-chain settings. `dev` chains (a local fork) expose the Config + Fork-Cheats tab and honor a saved
   // localStorage override; production chains bake the read RPC + deployed addresses and hide the dev tools.
   // `rpc` is the read endpoint used BEFORE a wallet connects; the wallet's provider takes over once connected.
-  // TODO(mainnet): fill 1.vault / 1.zap with the deployed addresses after the mainnet deploy (Track 1).
+  // Mainnet addresses deployed 2026-07-22 (block 25584890; see bankroll-contracts
+  // .deployed.mainnet.json — pool init + vault + ZapHelper + seed via scripts/launch.js).
   var NETWORKS = {
-    1:     { name: "Ethereum",     rpc: "https://ethereum-rpc.publicnode.com", vault: "", zap: "", dev: false },
+    1:     { name: "Ethereum",     rpc: "https://ethereum-rpc.publicnode.com", vault: "0xee8d4c5c768AadCd3517Aa8C908De300305D0A7f", zap: "0x348A57b1dc6E3dCAa645DE6e4E864924B410525D", dev: false },
     31337: { name: "Hardhat fork", rpc: "http://127.0.0.1:8545",               vault: "", zap: "", dev: true },
     1337:  { name: "Hardhat",       rpc: "http://127.0.0.1:8545",               vault: "", zap: "", dev: true },
   };
