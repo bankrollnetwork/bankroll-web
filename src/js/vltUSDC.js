@@ -18,14 +18,16 @@
   var ADV_KEY = "vaultTestAdvDeposits"; // Settings → Advanced: "1" = Advanced Deposits on (default off)
   var LOG_KEY = "vaultTestShowLog";     // Settings → Advanced: "1" = Activity log panel shown (default off)
   // Per-chain settings. `dev` chains (a local fork) expose the Config + Fork-Cheats tab and honor a saved
-  // localStorage override; production chains bake the read RPC + deployed addresses and hide the dev tools.
-  // `rpc` is the read endpoint used BEFORE a wallet connects; the wallet's provider takes over once connected.
+  // localStorage override; production chains bake the deployed addresses and hide the dev tools.
+  // `rpc` is the read endpoint used BEFORE a wallet connects; the wallet's provider takes over once
+  // connected. Mainnet's is null: it resolves at use time from mainnetRpcCandidates() — config.js's
+  // window.rpcURLs first, then PUBLIC_MAINNET_RPCS — so there's no duplicate URL to keep in sync.
   // Mainnet addresses deployed 2026-07-22 (block 25584890; see bankroll-contracts
   // .deployed.mainnet.json — pool init + vault + ZapHelper + seed via scripts/launch.js).
   var NETWORKS = {
-    1:     { name: "Ethereum",     rpc: "https://ethereum-rpc.publicnode.com", vault: "0xee8d4c5c768AadCd3517Aa8C908De300305D0A7f", zap: "0x348A57b1dc6E3dCAa645DE6e4E864924B410525D", dev: false },
-    31337: { name: "Hardhat fork", rpc: "http://127.0.0.1:8545",               vault: "", zap: "", dev: true },
-    1337:  { name: "Hardhat",       rpc: "http://127.0.0.1:8545",               vault: "", zap: "", dev: true },
+    1:     { name: "Ethereum",     rpc: null,                    vault: "0xee8d4c5c768AadCd3517Aa8C908De300305D0A7f", zap: "0x348A57b1dc6E3dCAa645DE6e4E864924B410525D", dev: false },
+    31337: { name: "Hardhat fork", rpc: "http://127.0.0.1:8545", vault: "", zap: "", dev: true },
+    1337:  { name: "Hardhat",       rpc: "http://127.0.0.1:8545", vault: "", zap: "", dev: true },
   };
   var DEFAULT_CHAIN = 1; // pre-connect assumption when no dev override is saved (production-first)
   var POOLS_SLOT = "6"; // v4 StateLibrary: PoolManager `pools` mapping slot (for extsload)
@@ -35,7 +37,59 @@
   // For pulling real mainnet gas/ETH prices into the ≈$ balance readouts.
   var CHAINLINK_ETH_USD = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"; // mainnet ETH/USD feed (8 dec)
   var AGGREGATOR_ABI = [{ name: "latestAnswer", inputs: [], outputs: [{ type: "int256", name: "" }], stateMutability: "view", type: "function" }];
-  var PUBLIC_MAINNET_RPCS = ["https://ethereum-rpc.publicnode.com", "https://eth.llamarpc.com", "https://cloudflare-eth.com"];
+  // Keyless public fallbacks (llamarpc last — observed returning 521s). Keyed endpoints from
+  // config.js (window.rpcURLs) are preferred ahead of these; see mainnetRpcCandidates().
+  var PUBLIC_MAINNET_RPCS = ["https://ethereum-rpc.publicnode.com", "https://cloudflare-eth.com", "https://eth.llamarpc.com"];
+  // Mainnet read-RPC candidates in preference order: config.js's window.rpcURLs array (keyed
+  // endpoints), the legacy single window.rpcURL, then the keyless public fallbacks.
+  function mainnetRpcCandidates() {
+    var list = [];
+    if (Array.isArray(window.rpcURLs)) list = list.concat(window.rpcURLs);
+    else if (window.rpcURL) list.push(window.rpcURL);
+    PUBLIC_MAINNET_RPCS.forEach(function (u) { if (list.indexOf(u) === -1) list.push(u); });
+    return list;
+  }
+  // True if `url` answers eth_chainId with mainnet within the timeout.
+  async function probeRpc(url, timeoutMs) {
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, timeoutMs || 2500);
+    try {
+      var r = await fetch(url, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }),
+        signal: ctl.signal,
+      });
+      var j = await r.json();
+      return !!(j && j.result && Number(j.result) === 1);
+    } catch (e) { return false; }
+    finally { clearTimeout(t); }
+  }
+  // First candidate that answers (probed SEQUENTIALLY — no fan-out hammering). Falls back to
+  // the preferred candidate if nothing answers, so reads fail soft on their usual path.
+  async function resolveMainnetRpc() {
+    var cands = mainnetRpcCandidates();
+    for (var i = 0; i < cands.length; i++) {
+      if (await probeRpc(cands[i])) return cands[i];
+    }
+    return cands[0];
+  }
+  // Pre-connect only: when a dashboard read fails on the current endpoint, re-probe the list
+  // and move to a live one (guarded so the retry's own failure can't recurse).
+  var _rpcResolving = false;
+  async function reresolveReadRpc() {
+    if (_rpcResolving || state.dev || state.account) return; // dev override / wallet reads — n/a
+    _rpcResolving = true;
+    try {
+      var best = await resolveMainnetRpc();
+      if (best && best !== state.cfg.rpc) {
+        state.cfg.rpc = best;
+        setCfgInputs();
+        logEntry("read RPC failed over to " + best.replace(/\/v2\/.*$/, "/v2/…"), "ok");
+        buildReadContracts();
+        await refreshDashboard();
+      }
+    } finally { _rpcResolving = false; }
+  }
   // Pools the in-browser Uniswap-SDK route reads (mainnet; present on the fork).
   // Candidate USDC/WETH V3 pools (mainnet) — the optimizer quotes every tier and picks the best.
   var V3_USDC_WETH_POOLS = [
@@ -105,10 +159,16 @@
 
   // ── helpers ────────────────────────────────────────────────────────────────
   function $f(name) { return document.querySelector('[data-field="' + name + '"]'); }
-  function setField(name, val) { var el = $f(name); if (el) el.textContent = val; }
+  // Both setters drop .vt-loading — the animated-… placeholder state the stat fields ship with
+  // in markup (and that markLoading() restores on reload transitions like connect).
+  function setField(name, val) { var el = $f(name); if (el) { el.classList.remove("vt-loading"); el.textContent = val; } }
   // HTML-capable setter for values that embed token logos — only ever fed client-formatted
   // numbers plus the fixed <img> tags below (never user/chain strings).
-  function setFieldHtml(name, html) { var el = $f(name); if (el) el.innerHTML = html; }
+  function setFieldHtml(name, html) { var el = $f(name); if (el) { el.classList.remove("vt-loading"); el.innerHTML = html; } }
+  // Flip fields back to the animated-… loading state while a bulk load is in flight.
+  function markLoading(names) {
+    names.forEach(function (n) { var el = $f(n); if (el) { el.textContent = ""; el.classList.add("vt-loading"); } });
+  }
   // "logo + symbol", logo ahead of the text, for the three base tokens.
   function tokHtml(sym) {
     var k = String(sym).toLowerCase();
@@ -202,7 +262,7 @@
     var hasOverride = !!(saved.rpc || saved.vault || saved.zap);
     var net = NETWORKS[DEFAULT_CHAIN];
     state.chainId = null; state.net = net; state.dev = hasOverride || !!net.dev;
-    state.cfg.rpc = saved.rpc || net.rpc;
+    state.cfg.rpc = saved.rpc || net.rpc || mainnetRpcCandidates()[0];
     state.cfg.vault = saved.vault || net.vault;
     state.cfg.zap = saved.zap || net.zap;
     setCfgInputs();
@@ -214,7 +274,7 @@
     state.net = net; state.dev = net ? !!net.dev : false;
     var base = net || NETWORKS[DEFAULT_CHAIN];
     var saved = state.dev ? readSavedCfg() : {};
-    state.cfg.rpc = saved.rpc || base.rpc;
+    state.cfg.rpc = saved.rpc || base.rpc || mainnetRpcCandidates()[0];
     state.cfg.vault = saved.vault || base.vault;
     state.cfg.zap = saved.zap || base.zap;
     setCfgInputs();
@@ -303,6 +363,8 @@
         setField("vs-apr30", aprPct(d30));
       } catch (e) { setField("vs-feegrowth", "—"); setField("vs-apr7", "—"); setField("vs-apr30", "—"); }
       await refreshV4Price(); // live pool price for the deposit estimator
+      var vp = state.priceUsdcPerVlt || 0;
+      setFieldHtml("vs-vlt-price", vp ? "$" + (vp >= 0.01 ? vp.toFixed(4) : vp.toPrecision(4)) + " / " + tokHtml("VLT") : "—");
       // Cache NAV/share (USDC, principal only) so deposit/zap can show an approval-free "you receive"
       // estimate (shares ≈ value deposited ÷ NAV/share) the way redeem uses previewRedeem.
       try {
@@ -324,6 +386,7 @@
     } catch (e) {
       console.error("[vault-test] dashboard read error:", e); // full object/stack in console
       logEntry("dashboard read failed: " + errText(e), "err");
+      reresolveReadRpc(); // pre-connect: probe the candidate list and retry on a live endpoint
     }
   }
 
@@ -375,6 +438,31 @@
       ? localize(formatUnits(String(state.bal.sharesVlt), state.tokens.vltDec, 2)) + " " + tokHtml("VLT") + " | " +
         localize(formatUnits(String(state.bal.sharesUsdc), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC")
       : "");
+    renderWalletModal(); // keep the wallet browser current with balances/prices as they land
+  }
+
+  // ── wallet modal ("wallet browser": ETH / VLT / USDC / vltUSDC + ≈$ total) ──
+  // Pure DOM render from the cached balances × the latest prices — opening it costs no RPC.
+  // Re-rendered from renderBalanceUsd() whenever balances or prices land, so an open modal
+  // stays live across refreshes.
+  function renderWalletModal() {
+    var have = !!state.account;
+    var ethN = have ? Number(formatUnits(state.bal.eth || "0", 18)) : 0;
+    var vltN = have ? Number(formatUnits(state.bal.vlt || "0", state.tokens.vltDec)) : 0;
+    var usdcN = have ? Number(formatUnits(state.bal.usdc || "0", state.tokens.usdcDec)) : 0;
+    var ethUsd = ethN * (state.ethUsd || 0);
+    var vltUsd = vltN * (state.priceUsdcPerVlt || 0);
+    var sharesUsd = have ? Number(state.bal.shares || "0") * (state.navPerShareUsdc || 0) : 0;
+    setField("w-account", have ? short(state.account) : "not connected");
+    setField("w-eth", have ? localize(formatUnits(state.bal.eth || "0", 18, 4)) : "-");
+    setField("w-vlt", have ? localize(formatUnits(state.bal.vlt || "0", state.tokens.vltDec, 4)) : "-");
+    setField("w-usdc", have ? localize(formatUnits(state.bal.usdc || "0", state.tokens.usdcDec, 2)) : "-");
+    setField("w-shares", have ? compact(state.bal.shares || "0") : "-");
+    setField("w-eth-usd", usdEq(ethUsd));
+    setField("w-vlt-usd", usdEq(vltUsd));
+    setField("w-usdc-usd", usdEq(usdcN)); // a USD stablecoin — ≈$ face value
+    setField("w-shares-usd", usdEq(sharesUsd));
+    setField("w-total", have ? "≈ $" + localize((ethUsd + vltUsd + usdcN + sharesUsd).toFixed(2)) : "—");
   }
 
   // ── swapData builder (mirrors scripts/dev/build_vlt_route.js) ───────────────
@@ -743,9 +831,12 @@
     var oChip = $("#swp-out-bal");
     oChip.attr("data-token", tout);
     oChip.text(formatUnits(balRaw(tout), decOf(tout), 4));
-    // Token logos on the selects follow the picks (filenames match the lowercase symbols).
+    // Token logos + labels on the dropdown triggers follow the picks (covers change events AND
+    // programmatic updates like flipSwap, which set the hidden selects without firing change).
     $("#swp-in-ic").attr("src", "img/logo/coingecko/" + tin + ".png");
     $("#swp-out-ic").attr("src", "img/logo/coingecko/" + tout + ".png");
+    $('.vt-tok-btn[data-side="in"] .vt-tok-cur').text(t.tin);
+    $('.vt-tok-btn[data-side="out"] .vt-tok-cur').text(t.tout);
   }
   function swapMaxRaw(tk) {
     var b = toBN(balRaw(tk));
@@ -777,6 +868,31 @@
   function toBN(x) { return web3.utils.toBN(x); }
   function decOf(token) { return token === "usdc" ? state.tokens.usdcDec : token === "shares" ? state.tokens.sharesDec : token === "eth" ? 18 : state.tokens.vltDec; }
   function balRaw(token) { return state.bal[token] || "0"; }
+
+  // ── swap token dropdowns (wallet-style rows over the hidden native selects) ─
+  // Rendered fresh on every open from cached balances × latest prices — no RPC, mirroring
+  // renderWalletModal(). Selecting a row writes the hidden select + fires change, so the
+  // existing swap logic (incl. the same-token auto-flip in onSwapTokenChange) runs untouched.
+  var SWAP_TOKENS = ["ETH", "USDC", "VLT"];
+  function renderTokMenu(side) {
+    var sel = $('.vt-tok-btn[data-side="' + side + '"]').closest(".vt-tok-sel");
+    var cur = $("#swp-" + side).val();
+    sel.find(".vt-tok-menu").html(SWAP_TOKENS.map(function (sym) {
+      var k = sym.toLowerCase();
+      var active = sym === cur;
+      return '<button type="button" class="vt-tok-row' + (active ? " is-active" : "") + '" role="option"' +
+        ' aria-selected="' + active + '" data-sym="' + sym + '">' +
+        '<img class="tok-ic" src="img/logo/coingecko/' + k + '.png" alt="">' +
+        '<span class="vt-tok-row-sym">' + sym + "</span>" +
+        '<span class="vt-tok-row-bal"><strong>' + localize(formatUnits(balRaw(k), decOf(k), 4)) + "</strong>" +
+        "<small>" + usdEq(swapUsd(sym, balRaw(k))) + "</small></span>" +
+        "</button>";
+    }).join(""));
+  }
+  function closeTokMenus() {
+    $(".vt-tok-menu").attr("hidden", true);
+    $(".vt-tok-btn").attr("aria-expanded", "false");
+  }
   function maxHuman(token) { var d = decOf(token); return formatUnits(balRaw(token), d, d); }
   function numVal(sel) { var n = parseFloat($(sel).val()); return isFinite(n) ? n : 0; }
   function trim(n) { return isFinite(n) ? String(Math.round(n * 1e6) / 1e6) : "0"; }
@@ -1129,19 +1245,81 @@
       '<p class="tx-kv"><b>action</b><br>' + labelHtml(label) + "</p>" +
       '<p class="tx-kv"><b>error</b></p><div class="tx-mono tx-err-detail">' + escapeHtml(errText(e)) + "</div>");
   }
+  // ── one-tx-at-a-time guard behind a blocking modal ──────────────────────────
+  // The pending modal IS the mutex: it opens the moment a tx flow starts — before the quote
+  // build and the wallet prompt — with a static backdrop that swallows every click, so the
+  // action buttons never need disabled/busy states (which the panel CSS would hide anyway).
+  // Once the wallet signs, runTx's transactionHash hook flips it to "waiting for confirmation",
+  // and showTxResult/showTxError morph it into the result in place. Flows that die BEFORE the
+  // wallet (validation — "enter an amount") report to the panel note as always: the modal show
+  // is delayed 150ms so those never even flash it; `txBusy` covers re-entry inside that window.
+  var txBusy = false, _txShowTimer = null, _txSettled = false;
+  function txPendingShow(what) {
+    _txSettled = false;
+    _txShowTimer = setTimeout(function () {
+      var t = document.getElementById("tx-modal-title");
+      t.textContent = "Confirm in your wallet"; t.className = "modal-title";
+      document.getElementById("tx-modal-body").innerHTML =
+        '<div class="tx-spinner" aria-hidden="true"></div>' +
+        '<p class="tx-kv tx-center"><b>' + escapeHtml(what) + "</b></p>" +
+        '<p class="tx-kv tx-center" style="opacity:.65">Review and sign the request in your wallet.</p>';
+      $("#txModal").addClass("tx-pending").modal({ backdrop: "static", keyboard: false });
+    }, 150);
+  }
+  // Phase 2 (from runTx's transactionHash hook): signed and in the mempool.
+  function txPendingMining(hash) {
+    if (_txSettled) return;
+    var url = explorerTxUrl(hash);
+    document.getElementById("tx-modal-title").textContent = "Waiting for confirmation…";
+    document.getElementById("tx-modal-body").innerHTML =
+      '<div class="tx-spinner" aria-hidden="true"></div>' +
+      '<p class="tx-kv tx-center">Transaction submitted — waiting for it to mine.</p>' +
+      '<div class="tx-mono">' + escapeHtml(hash || "") + "</div>" +
+      (url ? '<div class="tx-actions"><a class="button ghost small" href="' + url + '" target="_blank" rel="noopener">View on explorer ↗</a></div>' : "");
+  }
+  // A result/error is on screen (runTx) — reveal the modal's dismiss controls.
+  function txPendingSettle() {
+    _txSettled = true;
+    clearTimeout(_txShowTimer);
+    $("#txModal").removeClass("tx-pending");
+  }
+  // Flow over. If nothing settled, the flow died before the wallet — drop the pending modal
+  // (the panel note has the story).
+  function txPendingEnd() {
+    clearTimeout(_txShowTimer);
+    if (!_txSettled) $("#txModal").removeClass("tx-pending").modal("hide");
+  }
+  // Wrap a tx-initiating click handler: one flow at a time, pending modal for its duration.
+  function txGuard(what, fn) {
+    return function () {
+      if (txBusy) return;
+      txBusy = true;
+      txPendingShow(what);
+      var self = this, args = arguments;
+      Promise.resolve().then(function () { return fn.apply(self, args); })
+        .catch(function () {}) // handlers report their own errors (panel notes / error modal)
+        .then(function () { txBusy = false; txPendingEnd(); });
+    };
+  }
   async function runTx(label, sendPromise) {
     var entry = logEntry(label + " — pending…", "pending");
+    // Pending-modal phase 2: once the wallet signs (hash known), show "waiting for confirmation".
+    if (sendPromise && typeof sendPromise.on === "function") {
+      try { sendPromise.on("transactionHash", txPendingMining); } catch (e) {}
+    }
     try {
       var rec = await sendPromise;
       entry.className = "entry ok";
       entry.textContent = "[" + new Date().toLocaleTimeString() + "] " + label + " — OK  tx " + (rec.transactionHash || rec);
       showTxResult(label, rec);
+      txPendingSettle();
       await refreshBalances(); await refreshDashboard();
       return rec;
     } catch (e) {
       entry.className = "entry err";
       entry.textContent = "[" + new Date().toLocaleTimeString() + "] " + label + " — FAILED  " + errText(e);
       showTxError(label, e);
+      txPendingSettle();
       throw e;
     }
   }
@@ -1510,9 +1688,10 @@
   // (eth_gasPrice), falling back to the fork block's real base fee. ETH/USD: the Chainlink feed
   // present on the fork (no CORS, always works). Each leg fails soft and keeps the manual value.
   async function mainnetGasGwei() {
-    for (var i = 0; i < PUBLIC_MAINNET_RPCS.length; i++) {
+    var rpcs = mainnetRpcCandidates(); // keyed endpoints first, per-call failover
+    for (var i = 0; i < rpcs.length; i++) {
       try {
-        var r = await fetch(PUBLIC_MAINNET_RPCS[i], {
+        var r = await fetch(rpcs[i], {
           method: "POST", headers: { "content-type": "application/json" },
           body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_gasPrice", params: [] }),
         });
@@ -1533,26 +1712,23 @@
     return null;
   }
   async function mainnetEthUsd() {
-    // 1. Live spot — CoinGecko (CORS-friendly, no key).
+    // 1. Live spot — Coinbase (proper CORS, no key, generous limits). CoinGecko was dropped:
+    //    its free tier 429s per-IP and the error responses carry no CORS headers, so every
+    //    hit spammed the console with unsuppressable CORS/429 errors before the fallback ran.
     try {
-      var r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+      var r = await fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot");
       var j = await r.json();
-      if (j && j.ethereum && j.ethereum.usd > 0) return { usd: Number(j.ethereum.usd), src: "live (CoinGecko)" };
-    } catch (e) { /* try the next source */ }
-    // 2. Live spot — Coinbase.
-    try {
-      var r2 = await fetch("https://api.coinbase.com/v2/prices/ETH-USD/spot");
-      var j2 = await r2.json();
-      var amt = j2 && j2.data ? Number(j2.data.amount) : 0;
+      var amt = j && j.data ? Number(j.data.amount) : 0;
       if (amt > 0) return { usd: amt, src: "live (Coinbase)" };
-    } catch (e) { /* fall back to the on-fork feed */ }
-    // 3. Fallback — Chainlink ETH/USD on the fork (real, as of the fork block; no CORS).
+    } catch (e) { /* fall back to the onchain feed */ }
+    // 2. Fallback — Chainlink ETH/USD via the read provider (live on mainnet, as-of-fork-block
+    //    on a fork; onchain, so no CORS and no rate limits beyond the RPC's own).
     try {
       var agg = new state.readWeb3.eth.Contract(AGGREGATOR_ABI, CHAINLINK_ETH_USD);
       var a = await agg.methods.latestAnswer().call();
       var usd = Number(a) / 1e8;
-      if (usd > 0) return { usd: usd, src: "Chainlink @ fork block" };
-    } catch (e) { /* feed unavailable on this fork */ }
+      if (usd > 0) return { usd: usd, src: "Chainlink" };
+    } catch (e) { /* feed unavailable */ }
     return null;
   }
   async function fetchMainnetPrices(quiet) {
@@ -1607,7 +1783,9 @@
 
   // Gate the whole UI below the hero behind a connect widget — reveal #app once a wallet connects.
   function applyGate() {
-    var connected = !!state.account;
+    // "Connected" for gating = wallet present AND on a supported chain: a wrong-network wallet
+    // keeps the landing visible (main() shows the wrong-network modal and skips contract setup).
+    var connected = !!state.account && !!state.net;
     var gate = document.getElementById("vt-gate");
     var app = document.getElementById("app");
     var hero = document.getElementById("top");
@@ -1615,6 +1793,9 @@
     if (app) app.style.display = connected ? "" : "none";
     // Once connected, drop the hero copy to reclaim vertical space (restored on disconnect).
     if (hero) hero.style.display = connected ? "none" : "";
+    // The pre-connect landing content (marketing + architecture) follows the hero/gate.
+    var landing = document.getElementById("vt-landing");
+    if (landing) landing.style.display = connected ? "none" : "";
     // The vltUSDC Stats panel is SHARED between the two states: while disconnected it sits in the
     // gate's left column (populated via the HTTP read RPC — the boot path already runs
     // refreshDashboard() pre-connect); once connected it moves back into the Stats tab. Same DOM
@@ -1731,26 +1912,100 @@
   }
 
   // ── post-connect ─────────────────────────────────────────────────────────
+  // Ask the wallet to switch to Ethereum mainnet (EIP-3326). Returns the chainId the wallet
+  // lands on — still the old one if the user declines; the caller's gate is the enforcement.
+  async function promptMainnetSwitch(cid) {
+    var p = window.web3 && web3.currentProvider;
+    if (!p || typeof p.request !== "function") return cid;
+    try {
+      await p.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x1" }] });
+      return Number(await web3.eth.getChainId());
+    } catch (e) {
+      logEntry("mainnet switch declined: " + errText(e), "err");
+      return cid;
+    }
+  }
+
+  // Re-resolve when the wallet hops chains or switches accounts post-connect. Wired here (per
+  // page, in place) rather than in connectEthWallet: wallets fire these events as a side effect
+  // of the connect/switch handshake itself, and the shared connector's old blanket
+  // location.reload() looped on that. main() is idempotent and sequence-guarded, so re-running
+  // it is safe even if an event fires mid-handshake.
+  var walletWatchProvider = null;
+  function onChainChanged() {
+    if (!state.account) return; // disconnected — pre-connect reads follow cfg, not the wallet
+    logEntry("wallet chain changed — re-resolving network", "ok");
+    main();
+  }
+  function onAccountsChanged(accounts) {
+    if (!state.account) return; // disconnected / mid-handshake — the connect flow handles it
+    var next = (accounts && accounts[0]) ? String(accounts[0]) : null;
+    if (!next) {
+      // Wallet locked or authorization revoked. The header button's persist-mode click IS the
+      // disconnect path (connectEthWallet keeps disconnect() private; the button reuses it):
+      // it clears the connector globals + persist key, then fires our onWalletDisconnect.
+      logEntry("wallet revoked access — disconnecting", "err");
+      var b = document.getElementById("connect-wallet");
+      if (b) b.click();
+      return;
+    }
+    if (next.toLowerCase() === String(state.account).toLowerCase()) return; // same account — no-op
+    logEntry("wallet account changed — reloading for " + short(next), "ok");
+    window.ethDefaultAddress = next; // keep the connector's global coherent; main() reads it
+    main();
+  }
+  function watchWallet() {
+    var p = window.web3 && web3.currentProvider;
+    if (!p || typeof p.on !== "function" || p === walletWatchProvider) return; // once per provider
+    if (walletWatchProvider && typeof walletWatchProvider.removeListener === "function") {
+      walletWatchProvider.removeListener("chainChanged", onChainChanged);
+      walletWatchProvider.removeListener("accountsChanged", onAccountsChanged);
+    }
+    walletWatchProvider = p;
+    p.on("chainChanged", onChainChanged);
+    p.on("accountsChanged", onAccountsChanged);
+  }
+
+  var mainSeq = 0; // latest-run-wins: chainChanged can re-enter main() while one is in flight
   async function main() {
+    var seq = ++mainSeq;
     state.account = window.ethDefaultAddress;
     setField("account", short(state.account));
-    applyGate(); // reveal the dashboard now that we're connected
-    try {
-      var cid = Number(await web3.eth.getChainId());
-      applyNetwork(cid); // resolve cfg (rpc/vault/zap) + dev flag from the connected chain
-      setField("net", netName(cid));
-      // Warn only on an UNSUPPORTED chain; mainnet + the dev forks are both fine now.
-      if (!state.net) {
-        note("dep-note", "Unsupported network (chainId " + cid + "). Switch your wallet to Ethereum mainnet.", "vt-warn");
-      }
-    } catch (e) {}
+    watchWallet(); // follow post-connect chain hops + account switches (see the handlers above)
+    var cid = null;
+    try { cid = Number(await web3.eth.getChainId()); } catch (e) {}
+    if (seq !== mainSeq) return;
+    // Unknown chain → offer the mainnet switch before giving up (the dev forks are already known).
+    if (cid === null || !NETWORKS[cid]) {
+      cid = await promptMainnetSwitch(cid);
+      if (seq !== mainSeq) return;
+    }
+    applyNetwork(cid); // resolve cfg (rpc/vault/zap) + dev flag from the connected chain
+    setField("net", cid === null ? "-" : netName(cid));
+    applyGate(); // reveals the dashboard ONLY on a supported chain (applyGate checks state.net)
+    if (!state.net) {
+      // Wrong network and the switch was declined: stay on the landing, no contracts, no writes.
+      $("#wrongNetworkModal").modal("show");
+      logEntry("unsupported chainId " + cid + " — dashboard gated until the wallet switches", "err");
+      return;
+    }
     applyChainUI();       // show/hide the dev Config tab + footer for this chain
     buildReadContracts(); // reads now go through the connected wallet's provider
-    await refreshDashboard(); // ensures token addrs/decimals are loaded
-    buildWriteContracts();
-    await refreshBalances();
-    onZapTotal(false); // now that decimals are known, compute the swap split + build the zap route
-    depositPreview();
+    // Loading feedback for the post-connect burst: the balance fields flip to the animated-…
+    // placeholder and the tab-row refresh icon spins until the serial reads land.
+    markLoading(["eth", "usdc", "vlt", "shares"]);
+    var load = (async function () {
+      await refreshDashboard(); // ensures token addrs/decimals are loaded
+      if (seq !== mainSeq) return;
+      buildWriteContracts();
+      await refreshBalances();
+      if (seq !== mainSeq) return;
+      onZapTotal(false); // now that decimals are known, compute the swap split + build the zap route
+      depositPreview();
+    })();
+    spinDuring(document.getElementById("refresh-all"), load);
+    await load;
+    if (seq !== mainSeq) return;
     logEntry("connected " + state.account, "ok");
   }
   // Soft disconnect — connectEthWallet has already cleared window.web3/ethDefaultAddress + the persist
@@ -1767,6 +2022,7 @@
     setField("net", "-");
     ["eth", "usdc", "vlt", "shares"].forEach(function (f) { setField(f, "-"); });
     setField("eth-usd", ""); setField("vlt-usd", ""); setField("shares-usd", ""); setField("shares-parts", ""); // hide sub-lines
+    renderWalletModal(); // blank out the wallet browser too
     logEntry("wallet disconnected", "ok");
   }
 
@@ -1829,12 +2085,22 @@
     state.slippageBps = parseInt(localStorage.getItem(SLIP_KEY) || "100", 10) || 100;
     state.useRoutingApi = (localStorage.getItem(ROUTE_KEY) || "1") === "1"; // default ON (Uniswap SDK route)
     $("#cfg-routing-api").prop("checked", state.useRoutingApi);
-    buildReadContracts();
-    refreshDashboard().then(function () {
-      onZapTotal(false);   // populate swap split + slider + "you receive" from the default USDC
-      depositPreview();    // populate the deposit minShares floor from the default amounts
-      fetchMainnetPrices(false); // pull live gas + ETH on load
-    });
+    buildReadContracts(); // on the baked default RPC; the probe below may swap in a better one
+    (async function () {
+      // Pick the first LIVE endpoint from config.js (window.rpcURLs) + the public fallbacks
+      // before the initial read. Dev overrides skip the probe — the fork RPC is authoritative.
+      if (!state.dev) {
+        var best = await resolveMainnetRpc();
+        if (best !== state.cfg.rpc) { state.cfg.rpc = best; setCfgInputs(); buildReadContracts(); }
+      }
+      // Spin the tab-row refresh icon for the boot load too (visible only if a wallet
+      // connects mid-boot — pre-connect the animated-… field placeholders carry the signal).
+      spinDuring(document.getElementById("refresh-all"), refreshDashboard().then(function () {
+        onZapTotal(false);   // populate swap split + slider + "you receive" from the default USDC
+        depositPreview();    // populate the deposit minShares floor from the default amounts
+        fetchMainnetPrices(false); // pull live gas + ETH on load
+      }));
+    })();
 
     // balance chips (click = use max), deposit estimator, zap auto-quote, slippage modal
     $(".vt-bal").not("#swp-out-bal").on("click", onBalChip); // the To readout is static (no max on an output)
@@ -1855,11 +2121,36 @@
     $("#swp-slider").on("input", onSwapSlider);
     $("#swp-in").on("change", function () { onSwapTokenChange("in"); });
     $("#swp-out").on("change", function () { onSwapTokenChange("out"); });
+    // Custom token dropdowns: trigger toggles its own menu (closing the other); row click
+    // writes the hidden select and fires change; outside click / Escape close.
+    $(".vt-tok-btn").on("click", function (e) {
+      e.stopPropagation();
+      var wasOpen = $(this).attr("aria-expanded") === "true";
+      closeTokMenus();
+      if (!wasOpen) {
+        renderTokMenu($(this).data("side"));
+        $(this).attr("aria-expanded", "true").closest(".vt-tok-sel").find(".vt-tok-menu").removeAttr("hidden");
+      }
+    });
+    $(document).on("click", ".vt-tok-row", function (e) {
+      e.stopPropagation();
+      var side = $(this).closest(".vt-tok-sel").find(".vt-tok-btn").data("side");
+      $("#swp-" + side).val($(this).data("sym")).trigger("change");
+      closeTokMenus();
+      $('.vt-tok-btn[data-side="' + side + '"]').trigger("focus");
+    });
+    $(document).on("click", closeTokMenus);
+    $(document).on("keydown", function (e) { if (e.key === "Escape") closeTokMenus(); });
     $("#swp-flip").on("click", flipSwap);
-    $("#swp-go").on("click", doSwap);
-    $("#swp-approve-p").on("click", function () { toggleSwapApproval(swapTokens().tin); });
-    $("#swap-approve-usdc").on("click", function () { toggleSwapApproval("USDC"); });
-    $("#swap-approve-vlt").on("click", function () { toggleSwapApproval("VLT"); });
+    // Tx-initiating buttons are wrapped in txGuard: one flow at a time behind the blocking
+    // pending modal (see the guard block above runTx). The fork cheats fund-eth/fund-usdc stay
+    // unwrapped — they go through the RPC provider, never the wallet, so "confirm in your
+    // wallet" would mislead (fund-vlt DOES send a wallet tx via the zap, so it's guarded).
+    $("#swp-go").on("click", txGuard("Swap", doSwap));
+    $("#swp-approve-p").on("click", txGuard("Token approval for swapping", function () { return toggleSwapApproval(swapTokens().tin); }));
+    $("#swap-approve-usdc").on("click", txGuard("USDC approval for swapping", function () { return toggleSwapApproval("USDC"); }));
+    $("#swap-approve-vlt").on("click", txGuard("VLT approval for swapping", function () { return toggleSwapApproval("VLT"); }));
+    $("#wallet-open").on("click", function () { renderWalletModal(); $("#walletModal").modal("show"); });
     $("#settings-open").on("click", openSettings);
     $(".vt-mtab").on("click", function () { setSettingsTab($(this).data("stab")); });
     $("#slip-range").on("input", function () { $("#slip-input").val($(this).val()); paintRange(this); });
@@ -1872,12 +2163,12 @@
     $("#cfg-save").on("click", reload);
     // Normalized per-panel refresh (delegated — buttons get moved into tab panes by setupTabs()).
     $("#refresh-all").on("click", function () { refreshAll(this); });
-    $("#dep-approve-vlt, #dep-approve-vlt-p").on("click", function () { toggleApproval(APPROVALS[0]); });
-    $("#dep-approve-usdc, #dep-approve-usdc-p").on("click", function () { toggleApproval(APPROVALS[1]); });
-    $("#dep-go").on("click", doDeposit);
-    $("#zap-approve-usdc, #zap-approve-usdc-p").on("click", function () { toggleApproval(APPROVALS[2]); });
-    $("#zap-go").on("click", doZapDeposit);
-    $("#red-go").on("click", doRedeem);
+    $("#dep-approve-vlt, #dep-approve-vlt-p").on("click", txGuard("VLT approval for the vault", function () { return toggleApproval(APPROVALS[0]); }));
+    $("#dep-approve-usdc, #dep-approve-usdc-p").on("click", txGuard("USDC approval for the vault", function () { return toggleApproval(APPROVALS[1]); }));
+    $("#dep-go").on("click", txGuard("Direct deposit", doDeposit));
+    $("#zap-approve-usdc, #zap-approve-usdc-p").on("click", txGuard("USDC approval for deposits", function () { return toggleApproval(APPROVALS[2]); }));
+    $("#zap-go").on("click", txGuard("Deposit", doZapDeposit));
+    $("#red-go").on("click", txGuard("Withdraw", doRedeem));
     $("#cfg-routing-api").on("change", function () {
       state.useRoutingApi = this.checked;
       try { localStorage.setItem(ROUTE_KEY, this.checked ? "1" : "0"); } catch (e) {}
@@ -1885,7 +2176,7 @@
     });
     $("#fund-eth-go").on("click", fundEth);
     $("#fund-usdc-go").on("click", fundUsdc);
-    $("#fund-vlt-go").on("click", fundVlt);
+    $("#fund-vlt-go").on("click", txGuard("Buy VLT (fork cheat)", fundVlt));
 
     // periodic dashboard refresh (read-only, cheap)
     setInterval(refreshDashboard, 60000);
@@ -1893,9 +2184,9 @@
     setInterval(function () { fetchMainnetPrices(true); }, 60000);
 
     applyGate(); // gated until connect (the #app inline display:none is the pre-JS fallback)
-    // The gate's CTA forwards to the header CONNECT button (same connect flow; the click is a user
-    // gesture so the wallet prompt still opens).
-    $("#gate-connect").on("click", function () {
+    // The landing CTAs (hero + closing panel) forward to the header CONNECT button
+    // (same connect flow; the click is a user gesture so the wallet prompt still opens).
+    $(".vt-connect-cta").on("click", function () {
       var b = document.getElementById("connect-wallet");
       if (b) b.click();
     });

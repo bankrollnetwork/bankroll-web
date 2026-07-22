@@ -47,6 +47,9 @@ function initEthConnect(callback, { requireMainnet = true, persist = false, onDi
         console.warn('initEthConnect: no #connect-wallet button on page')
         return
     }
+    // The page's own idle label ("CONNECT" on the legacy pages, "Connect" on vltUSDC) — restored
+    // on disconnect so each page keeps its casing.
+    const idleLabel = btn.textContent
 
     // Reflect the connected wallet in the button — clickable "Disconnect" in persist mode, the legacy
     // dead "Connected" otherwise.
@@ -62,7 +65,7 @@ function initEthConnect(callback, { requireMainnet = true, persist = false, onDi
         }
     }
     function showDisconnected() {
-        btn.textContent = 'CONNECT'
+        btn.textContent = idleLabel
         btn.classList.remove('disabled')
         btn.style.pointerEvents = ''
     }
@@ -236,7 +239,10 @@ async function connectEthereumWallet({ requireMainnet = true, silent = false, pr
     //    with no config and no key in source. Only set if not already configured.
     if (!window.infura && typeof Web3 !== 'undefined') {
         try {
-            var rpcUrl = window.rpcURL || 'https://ethereum-rpc.publicnode.com'
+            // config.js now exposes window.rpcURLs (preference-ordered array); accept the
+            // legacy single window.rpcURL too, then the keyless public default.
+            var rpcUrl = (Array.isArray(window.rpcURLs) && window.rpcURLs[0]) ||
+                window.rpcURL || 'https://ethereum-rpc.publicnode.com'
             window.infura = new Web3(new Web3.providers.HttpProvider(rpcUrl))
         } catch (e) {}
     }

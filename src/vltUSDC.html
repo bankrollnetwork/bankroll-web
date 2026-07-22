@@ -5,7 +5,7 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="robots" content="noindex, nofollow"/>
-    <title>vltUSDC</title>
+    <title>vltUSDC — auto-compounding VLT/USDC vault</title>
 
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="128x128" href="img/logo/vlt-128.png">
@@ -53,25 +53,13 @@
         .vt-approval-row + .vt-approval-row { border-top: 1px solid rgba(255,255,255,0.08); }
         .vt-approval-label strong { display: block; font-size: 0.9rem; }
         .vt-approval-label span { display: block; font-size: 0.78rem; opacity: 0.6; margin-top: 2px; }
-        /* Pre-connect layout: read-only vltUSDC Stats on the left, connect card on the right.
-           Single column (stats first, then the card) below the breakpoint. */
-        .vt-precon { display: grid; gap: 28px; align-items: start; }
-        .vt-precon-stats { min-width: 0; }
-        @media (min-width: 900px) {
-            .vt-precon { grid-template-columns: minmax(0, 1fr) minmax(0, 400px); }
-        }
-
-        /* "Connect to get started" gate — shown until a wallet connects, then #app reveals. */
+        /* Pre-connect stats gate — shown until a wallet connects, then #app reveals. */
         .vt-gate { padding: 36px 0 72px; }
-        .vt-gate-card { max-width: 460px; margin: 0 auto; text-align: center;
-            display: flex; flex-direction: column; align-items: center;
-            padding: 40px 28px; border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
-            box-shadow: var(--shadow); }
-        .vt-gate-card .vt-gate-icon { font-size: 2rem; opacity: 0.55; line-height: 1; }
-        .vt-gate-card h2 { margin: 14px 0 8px; }
-        .vt-gate-card p { opacity: 0.72; margin: 0 0 22px; }
-        .vt-gate-card .button { min-width: 190px; }
+        /* Pre-connect landing sections (#vt-landing, hidden by applyGate() once connected):
+           spacing the shared theme classes don't own, + anchor offset under the fixed header. */
+        #vt-landing .overview { margin-top: 72px; }
+        #vt-landing .notice-panel { margin-top: 26px; }
+        #how { scroll-margin-top: 84px; }
         .vt-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
         .vt-row label { font-weight: 700; font-size: 0.85rem; opacity: 0.85; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
         .vt-row input, .vt-row select {
@@ -100,11 +88,31 @@
         .tok-pair-lg .tok-ic { width: 0.72em; height: 0.72em; vertical-align: -0.08em; }
         .tok-pair-lg .tok-ic + .tok-ic { margin-left: -0.26em; }
         .sc-sub .tok-ic, .sc-usd .tok-ic { width: 14px; height: 14px; vertical-align: -3px; }
-        /* Swap token select with the token's logo overlaid on the left (updated by the client
-           when the selection changes). Container owns the flex sizing the bare select had. */
+        /* Swap token picker: custom anchored dropdown over a HIDDEN native select (the select
+           stays the source of truth — the menu writes .val() + change, so all swap logic reads
+           it unchanged). Trigger wears the input chrome; menu rows mirror the wallet-modal rows. */
         .vt-tok-sel { position: relative; flex: 0 0 132px; }
-        .vt-tok-sel .tok-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-        .vt-tok-sel select { width: 100%; padding-left: 38px; }
+        .vt-tok-native { display: none; }
+        .vt-tok-btn { display: flex; align-items: center; gap: 8px; width: 100%; height: 100%;
+            padding: 10px 10px 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.04); color: inherit; font: inherit; font-weight: 800; cursor: pointer; }
+        .vt-tok-btn:hover { border-color: rgba(255,255,255,0.34); }
+        .vt-tok-btn .tok-ic { flex: 0 0 auto; }
+        .vt-tok-caret { width: 0.85rem; height: 0.85rem; margin-left: auto; opacity: 0.6; flex: 0 0 auto; }
+        .vt-tok-btn[aria-expanded="true"] .vt-tok-caret { transform: rotate(180deg); }
+        .vt-tok-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 252px;
+            padding: 6px; border-radius: var(--radius); border: 1px solid rgba(219, 210, 219, 0.2);
+            background: var(--paper-2); box-shadow: var(--shadow); }
+        .vt-tok-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px;
+            border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+        .vt-tok-row:hover { background: rgba(219, 210, 219, 0.08); }
+        .vt-tok-row.is-active { background: rgba(219, 210, 219, 0.06); box-shadow: inset 0 0 0 1px rgba(219, 210, 219, 0.24); }
+        .vt-tok-row .tok-ic { width: 24px; height: 24px; flex: 0 0 auto; }
+        .vt-tok-row-sym { font-weight: 800; }
+        .vt-tok-row-bal { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+        .vt-tok-row-bal strong { display: block; font-weight: 700; }
+        .vt-tok-row-bal small { display: block; opacity: 0.65; margin-top: 1px; }
+        .vt-tok-row-bal small:empty { display: none; }
         /* "you receive ≈ <value>" — right-aligned under the input, only rendered when there's data. */
         .vt-recv { text-align: right; font-size: 0.85rem; margin-top: 6px; }
         .vt-recv > span:first-child { font-weight: 700; opacity: 0.85; }
@@ -187,6 +195,14 @@
         .vt-kv { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .vt-kv span { opacity: 0.7; }
         .vt-kv strong { font-variant-numeric: tabular-nums; word-break: break-all; text-align: right; }
+        /* Animated "…" for RPC-populated fields still waiting on data. Markup ships the stat
+           fields with .vt-loading + empty content (so the dots animate before ANY JS runs);
+           the first real setField()/setFieldHtml() write drops the class. The width-reveal
+           steps() trick uncovers the ellipsis glyph dot by dot. :empty guards a straggler:
+           a field written without clearing the class shows its value, not dots. */
+        .vt-loading:empty::after { content: "\2026"; display: inline-block; width: 0; overflow: hidden;
+            white-space: nowrap; vertical-align: bottom; animation: vt-ellipsis 1.2s steps(4, end) infinite; }
+        @keyframes vt-ellipsis { to { width: 1.25em; } }
         /* Stats panel: lay metrics out as cards with the value UNDER the title (like the Your Stats
            cards), not the flat label-left / value-right rows. Same fonts — only layout + card chrome. */
         .vt-cards .vt-kv { display: block; min-height: 0; padding: 16px; border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius); background: rgba(23, 9, 24, 0.72); }
@@ -217,9 +233,28 @@
         .modal-body .btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; margin-bottom: 8px; border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius); color: var(--white); text-decoration: none; cursor: pointer; }
         .modal-body .btn:hover { background: rgba(219, 210, 219, 0.08); border-color: rgba(219, 210, 219, 0.34); }
         .modal-footer .btn { display: inline-block; padding: 8px 16px; border: 1px solid rgba(219, 210, 219, 0.2); border-radius: 999px; color: var(--white); cursor: pointer; }
+        /* Wallet modal (#walletModal): balance rows — logo + symbol left, amount + ≈$ right. */
+        .vt-wallet-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .vt-wallet-row .tok-ic { width: 24px; height: 24px; }
+        .vt-wallet-row .tok-pair .tok-ic + .tok-ic { margin-left: -9px; }
+        .vt-wallet-sym { font-weight: 800; }
+        .vt-wallet-amt { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+        .vt-wallet-amt strong { display: block; }
+        .vt-wallet-amt small { display: block; opacity: 0.65; margin-top: 2px; }
+        .vt-wallet-amt small:empty { display: none; }
+        .vt-wallet-total { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0 2px; font-weight: 800; }
+        .vt-wallet-total strong { font-size: 1.15rem; }
+        .vt-wallet-addr { font-weight: 400; font-size: 0.8rem; opacity: 0.6; margin-left: 8px; }
         /* Tx result / error modal (#txModal) */
         .modal-title.tx-ok { color: #55efc4; }
         .modal-title.tx-err { color: #ff7675; }
+        /* Blocking pending state (txPendingShow): the modal is the page's tx mutex — a static
+           backdrop swallows every click and dismissal stays hidden until a result/error lands. */
+        .modal.tx-pending .close, .modal.tx-pending .modal-footer { display: none; }
+        .tx-spinner { width: 30px; height: 30px; margin: 4px auto 16px; border-radius: 50%;
+            border: 3px solid rgba(255,255,255,0.15); border-top-color: var(--white);
+            animation: vt-spin 0.8s linear infinite; }
+        .tx-center { text-align: center; }
         .tx-kv { font-size: .85rem; margin: 0 0 10px; }
         .tx-kv b { opacity: .6; font-weight: 600; }
         .tx-mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .78rem; word-break: break-all;
@@ -239,7 +274,7 @@
                 <img src="img/logo/LogoWhiteText.png" alt="Bankroll">
                 <span class="brand-token">VLT</span>
             </a>
-            <a id="connect-wallet" class="button primary" href="javascript:void(0)">CONNECT</a>
+            <a id="connect-wallet" class="button primary" href="javascript:void(0)">Connect</a>
         </nav>
     </header>
 
@@ -247,30 +282,202 @@
         <section class="subpage-hero" id="top">
             <div class="subpage-inner">
                 <div class="subpage-copy reveal is-visible">
-                    <p class="eyebrow">Uniswap V4 liquidity vault</p>
+                    <p class="eyebrow">Put your USDC to work</p>
                     <h1><span class="tok-pair tok-pair-lg"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</h1>
-                    <p class="lead">Auto-compounding VLT/USDC liquidity on Uniswap V4. Deposit both tokens — or zap in with USDC alone — to mint vltUSDC and earn trading fees, reinvested into your position automatically so your shares keep growing while you hold.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Pre-connect: read-only vltUSDC Stats (left, fed by the read RPC) beside the connect card
-             (right); stacked stats-first on narrow screens. Everything below stays hidden until a
-             wallet connects. The stats panel is SHARED — applyGate() moves it into #vt-public-stats
-             while disconnected and back into the Stats tab once connected. -->
-        <section class="vt-gate" id="vt-gate">
-            <div class="wrap">
-                <div class="vt-precon">
-                    <div class="vt-precon-stats" id="vt-public-stats"></div>
-                    <div class="vt-gate-card reveal is-visible">
-                        <i class="simple-icon-wallet vt-gate-icon" aria-hidden="true"></i>
-                        <h2>Connect to Get Started</h2>
-                        <p>Connect a wallet on your fork network to load the vault dashboard and drive every flow.</p>
-                        <a id="gate-connect" class="button primary" href="javascript:void(0)">Connect Wallet</a>
+                    <p class="lead">Deposit USDC and get back one token: vltUSDC. Underneath, your deposit becomes trading liquidity for VLT on Uniswap — every swap in the pool pays a fee, and the vault reinvests those fees into your position automatically. Nothing to stake, nothing to claim, nothing to manage. Withdraw whenever you like.</p>
+                    <div class="doc-actions" aria-label="Primary actions">
+                        <a class="button primary vt-connect-cta" href="javascript:void(0)">
+                            <i class="simple-icon-wallet" aria-hidden="true"></i>
+                            Connect Wallet
+                        </a>
+                        <a class="button ghost" href="#how">
+                            <i class="simple-icon-bulb" aria-hidden="true"></i>
+                            How it works
+                        </a>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!-- Pre-connect: read-only vltUSDC Stats, fed by the read RPC (the hero's Connect Wallet CTA
+             is the connect affordance). Everything below stays hidden until a wallet connects. The
+             stats panel is SHARED — applyGate() moves it into #vt-public-stats while disconnected
+             and back into the Stats tab once connected. -->
+        <section class="vt-gate" id="vt-gate">
+            <div class="wrap">
+                <div id="vt-public-stats"></div>
+            </div>
+        </section>
+
+        <!-- Pre-connect landing: marketing (what this is / why it's different) then architecture
+             (how it's built / trust model / risks / contracts). applyGate() hides the whole
+             wrapper — alongside the hero and gate — once a wallet connects. -->
+        <div id="vt-landing">
+
+            <section class="main-section" id="how">
+                <div class="wrap">
+                    <div class="section-heading reveal">
+                        <p class="eyebrow">How it works</p>
+                        <h2>Deposit once. Earn from every trade.</h2>
+                        <p>vltUSDC turns the VLT market's trading activity into a compounding USDC position you simply hold.</p>
+                    </div>
+                    <div class="step-grid reveal">
+                        <div class="step-card">
+                            <span>01</span>
+                            <h3>Deposit</h3>
+                            <p>Bring USDC on its own — the vault buys the VLT half for you in the same transaction — or bring both tokens. Either way, vltUSDC lands in your wallet: a standard ERC-20 you hold like any other.</p>
+                        </div>
+                        <div class="step-card">
+                            <span>02</span>
+                            <h3>Earn</h3>
+                            <p>Your deposit becomes the deepest VLT/USDC market on Uniswap. Every swap pays a 1% fee, and all of it accrues to holders — real trading revenue, not printed rewards.</p>
+                        </div>
+                        <div class="step-card">
+                            <span>03</span>
+                            <h3>Compound</h3>
+                            <p>Collected fees are reinvested into the position automatically. No keeper, no claim button, no compound fee — the value accrues to your token instead of paying out.</p>
+                        </div>
+                        <div class="step-card">
+                            <span>04</span>
+                            <h3>Withdraw</h3>
+                            <p>Redeem any time for both tokens, or take USDC only in a single transaction. Nothing in the system can be paused — the exit is always open.</p>
+                        </div>
+                    </div>
+
+                    <div class="overview">
+                        <div class="copy-block reveal">
+                            <div class="section-heading">
+                                <p class="eyebrow">Why vltUSDC</p>
+                                <h2>Real yield, in a token you actually hold.</h2>
+                            </div>
+                            <p>Yield here is the old-fashioned kind: traders pay for liquidity, and you supplied the liquidity. When the VLT market is busy you earn more; when it's quiet you earn less. Nothing is minted, promised, or propped up.</p>
+                            <p>Roughly half your position sits in USDC at all times. You keep upside exposure to VLT with materially less volatility than holding it outright — and half your value stays a stablecoin, ready the moment you want out.</p>
+                            <p>And it's genuinely yours. vltUSDC lives in your wallet like any other token — transfer it, hold it, build on it. The vault has no admin keys, no pause switch, and no upgrade path, so nobody can change the deal after you're in. Not even us.</p>
+                        </div>
+                        <aside class="proof-panel reveal" aria-label="vltUSDC key facts">
+                            <h3>Key facts</h3>
+                            <ul class="key-facts">
+                                <li><span>Chain</span><strong>Ethereum</strong></li>
+                                <li><span>Market</span><strong>Uniswap V4</strong></li>
+                                <li><span>Pair · range</span><strong>VLT/USDC · full range</strong></li>
+                                <li><span>Fee tier</span><strong>1% per swap</strong></li>
+                                <li><span>Compound fee</span><strong>None</strong></li>
+                                <li><span>Admin keys</span><strong>None</strong></li>
+                                <li><span>Audit</span><strong>Shieldify</strong></li>
+                            </ul>
+                        </aside>
+                    </div>
+                </div>
+            </section>
+
+            <section class="main-section doc-section">
+                <div class="wrap">
+                    <div class="doc-layout">
+                        <article class="doc-main reveal">
+                            <div class="section-heading">
+                                <p class="eyebrow">Under the hood</p>
+                                <h2>One position. No oracle. No keys.</h2>
+                                <p>vltUSDC is an ERC-20 share over a single full-range Uniswap V4 VLT/USDC position, engineered for minimal trust: the fewest moving parts that can do the job, and no privileged role anywhere.</p>
+                            </div>
+                            <div class="thesis-stack">
+                                <section class="article-panel">
+                                    <h3>Shares are liquidity, not dollars</h3>
+                                    <p>Shares are denominated in the pool's own liquidity units (L) — never in prices — so no oracle exists anywhere in the system and there is no price feed to manipulate. Your balance is a pro-rata claim on the position, checkable directly against the pool.</p>
+                                </section>
+                                <section class="article-panel">
+                                    <h3>Two entrypoints, by design</h3>
+                                    <p>The vault's entire write surface is deposit and redeem. Deposit pulls a balanced VLT + USDC pair, adds liquidity with no internal swap, and mints shares against the liquidity the pool actually credited — neutralizing donation and first-deposit inflation attacks. Redeem burns shares and returns both tokens in kind: no forced sale, no slippage input, nothing to sandwich — and it can never exceed what the position holds.</p>
+                                </section>
+                                <section class="article-panel">
+                                    <h3>Compounding rides on deposits</h3>
+                                    <p>There is no keeper and no compound function. Once about $100 of fees is claimable, the next deposit harvests them first: it rebalances within a hard-capped ≤5% price move and reinvests 100% as fresh liquidity while minting no new shares — so liquidity per share rises and every holder's redemption value grows. In a quiet market, anyone can trigger it with a small deposit.</p>
+                                </section>
+                                <section class="article-panel">
+                                    <h3>The zap lives outside the walls</h3>
+                                    <p>The vault never swaps and depends on nothing external. USDC-only deposits go through the ZapHelper — a separate, replaceable periphery contract that buys VLT on the open market (real buy pressure for VLT) and deposits the pair, with shares minting straight to your wallet. The vault doesn't reference it: a zapper bug can't touch the vault or its holders.</p>
+                                </section>
+                            </div>
+                        </article>
+                        <aside class="doc-aside reveal">
+                            <div class="doc-callout strong">
+                                <strong>The code that shipped is the code that runs.</strong>
+                                <p>No proxy, no migration path, no owner, no admin role, no pause, no sweep. Every parameter is a constant fixed at deploy — nobody, including the deployer, holds a key over the vault.</p>
+                            </div>
+                            <div class="proof-panel">
+                                <h3>Trust model</h3>
+                                <ul class="key-facts">
+                                    <li><span>Upgradeable</span><strong>No</strong></li>
+                                    <li><span>Admin keys</span><strong>None</strong></li>
+                                    <li><span>Pause switch</span><strong>None</strong></li>
+                                    <li><span>Price oracle</span><strong>None</strong></li>
+                                    <li><span>Keeper</span><strong>None</strong></li>
+                                    <li><span>Autocompound</span><strong>Yes</strong></li>
+                                    <li><span>Exit</span><strong>Always open</strong></li>
+                                </ul>
+                            </div>
+                        </aside>
+                    </div>
+
+                    <div class="notice-panel reveal">
+                        <strong>Know the risks.</strong>
+                        <p>vltUSDC is a liquidity position, not a savings account. If VLT moves sharply, the position underperforms simply holding the two tokens (impermanent loss). Yield tracks trading volume, so quiet markets compound slowly. VLT itself is volatile, and smart-contract risk is never zero — audit or not. Don't deposit more than you can afford to lose.</p>
+                    </div>
+
+                    <div class="resources reveal">
+                        <div class="section-heading">
+                            <p class="eyebrow">Verify everything</p>
+                            <h2>Don't take this page's word for it.</h2>
+                            <p>Every claim above is checkable onchain: the vault code, the pool, the position, and the audit trail are all public.</p>
+                        </div>
+                        <div class="resource-grid" aria-label="vltUSDC contract links">
+                            <a class="resource-card" href="https://etherscan.io/address/0xee8d4c5c768AadCd3517Aa8C908De300305D0A7f#code" target="_blank" rel="noopener">
+                                <i class="simple-icon-lock" aria-hidden="true"></i>
+                                <span class="resource-copy">
+                                    <strong>Vault contract</strong>
+                                    <span>Verified on Etherscan</span>
+                                </span>
+                            </a>
+                            <a class="resource-card" href="https://etherscan.io/address/0x348A57b1dc6E3dCAa645DE6e4E864924B410525D#code" target="_blank" rel="noopener">
+                                <i class="simple-icon-energy" aria-hidden="true"></i>
+                                <span class="resource-copy">
+                                    <strong>ZapHelper</strong>
+                                    <span>USDC-only entry periphery</span>
+                                </span>
+                            </a>
+                            <a class="resource-card" href="https://etherscan.io/token/0x6b785a0322126826d8226d77e173d75dafb84d11" target="_blank" rel="noopener">
+                                <i class="simple-icon-diamond" aria-hidden="true"></i>
+                                <span class="resource-copy">
+                                    <strong>VLT token</strong>
+                                    <span>The other half of the pair</span>
+                                </span>
+                            </a>
+                            <a class="resource-card" href="/security.html">
+                                <i class="simple-icon-shield" aria-hidden="true"></i>
+                                <span class="resource-copy">
+                                    <strong>Security</strong>
+                                    <span>Audits &amp; design notes</span>
+                                </span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="doc-wide-panel reveal">
+                        <div class="section-heading">
+                            <p class="eyebrow">Get started</p>
+                            <h2>Ready when you are.</h2>
+                            <p>Connect a wallet to see the vault live — your stats, the pool, and every flow. Deposits start at any size, compounding is automatic, and you can leave whenever you like.</p>
+                        </div>
+                        <div class="doc-actions">
+                            <a class="button primary vt-connect-cta" href="javascript:void(0)">
+                                <i class="simple-icon-wallet" aria-hidden="true"></i>
+                                Connect Wallet
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
 
         <section class="main-section" id="app" style="display:none">
             <div class="wrap">
@@ -284,7 +491,7 @@
                     <button type="button" class="vt-tab" data-tab="swap">Swap</button>
                     <button type="button" class="vt-tab" data-tab="advanced">Advanced</button>
                     <button type="button" class="vt-tab" data-tab="config">Config</button>
-                    <span class="vt-tab-actions"><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="refresh-all" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span>
+                    <span class="vt-tab-actions"><button type="button" id="wallet-open" class="vt-refresh" title="Wallet" aria-label="Wallet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></button><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="refresh-all" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span>
                 </nav>
                 <div class="vt-tab-content">
                     <div class="vt-tab-pane" id="pane-stats"></div>
@@ -331,17 +538,18 @@
                             <div><h2>vltUSDC Stats</h2><p>Supply and performance metrics</p></div>
                         </div>
                         <div class="result-grid vt-cards">
-                            <div class="vt-kv"><span>TVL</span><strong data-field="vs-tvl">-</strong></div>
-                            <div class="vt-kv"><span>Pool</span><strong data-field="vs-pool">-</strong></div>
-                            <div class="vt-kv"><span>positionLiquidity (L)</span><strong data-field="vs-liq">-</strong></div>
-                            <div class="vt-kv"><span>totalSupply</span><strong data-field="vs-supply">-</strong></div>
-                            <div class="vt-kv"><span>L per share</span><strong data-field="vs-pershare">-</strong></div>
-                            <div class="vt-kv"><span>lifetime L/share growth</span><strong data-field="vs-feegrowth">-</strong></div>
-                            <div class="vt-kv"><span>7d APR</span><strong data-field="vs-apr7">-</strong></div>
-                            <div class="vt-kv"><span>30d APR</span><strong data-field="vs-apr30">-</strong></div>
-                            <div class="vt-kv"><span>claimable (fees + retained)</span><strong data-field="vs-claimable">-</strong></div>
-                            <div class="vt-kv"><span>auto-compound trigger</span><strong data-field="vs-trigger">-</strong></div>
-                            <div class="vt-kv"><span>lifetime fees</span><strong data-field="vs-fees">-</strong></div>
+                            <div class="vt-kv"><span>TVL</span><strong data-field="vs-tvl" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>Pool</span><strong data-field="vs-pool" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>positionLiquidity (L)</span><strong data-field="vs-liq" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>totalSupply</span><strong data-field="vs-supply" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>L per share</span><strong data-field="vs-pershare" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>lifetime L/share growth</span><strong data-field="vs-feegrowth" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>7d APR</span><strong data-field="vs-apr7" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>30d APR</span><strong data-field="vs-apr30" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>claimable (fees + retained)</span><strong data-field="vs-claimable" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>auto-compound trigger</span><strong data-field="vs-trigger" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>lifetime fees</span><strong data-field="vs-fees" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>VLT price</span><strong data-field="vs-vlt-price" class="vt-loading"></strong></div>
                         </div>
                         <p class="calc-note">L per share is liquidity-denominated, not USD.</p>
                     </div>
@@ -363,8 +571,15 @@
                             <div style="display:flex; gap:8px;">
                                 <input id="swp-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
                                 <div class="vt-tok-sel">
-                                    <img class="tok-ic" id="swp-in-ic" src="img/logo/coingecko/eth.png" alt="">
-                                    <select id="swp-in">
+                                    <button type="button" class="vt-tok-btn" data-side="in" aria-haspopup="listbox" aria-expanded="false">
+                                        <img class="tok-ic" id="swp-in-ic" src="img/logo/coingecko/eth.png" alt="">
+                                        <span class="vt-tok-cur">ETH</span>
+                                        <svg class="vt-tok-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    <div class="vt-tok-menu" role="listbox" aria-label="Select the token to swap from" hidden></div>
+                                    <!-- Hidden native select stays the source of truth — the menu writes .val() +
+                                         change, so all existing swap logic reads it unchanged. -->
+                                    <select id="swp-in" class="vt-tok-native" tabindex="-1" aria-hidden="true">
                                         <option value="ETH" selected>ETH</option>
                                         <option value="USDC">USDC</option>
                                         <option value="VLT">VLT</option>
@@ -380,8 +595,13 @@
                             <div style="display:flex; gap:8px;">
                                 <input id="swp-out-amount" type="text" value="" inputmode="decimal" placeholder="0.0" style="flex:1;">
                                 <div class="vt-tok-sel">
-                                    <img class="tok-ic" id="swp-out-ic" src="img/logo/coingecko/usdc.png" alt="">
-                                    <select id="swp-out">
+                                    <button type="button" class="vt-tok-btn" data-side="out" aria-haspopup="listbox" aria-expanded="false">
+                                        <img class="tok-ic" id="swp-out-ic" src="img/logo/coingecko/usdc.png" alt="">
+                                        <span class="vt-tok-cur">USDC</span>
+                                        <svg class="vt-tok-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </button>
+                                    <div class="vt-tok-menu" role="listbox" aria-label="Select the token to receive" hidden></div>
+                                    <select id="swp-out" class="vt-tok-native" tabindex="-1" aria-hidden="true">
                                         <option value="ETH">ETH</option>
                                         <option value="USDC" selected>USDC</option>
                                         <option value="VLT">VLT</option>
@@ -405,12 +625,12 @@
                             <div><h2>Your Stats</h2><p>Wallet balances and your position</p></div>
                         </div>
                         <div class="result-grid vt-cards">
-                            <div class="vt-kv"><span>Network</span><strong data-field="net">-</strong></div>
+                            <div class="vt-kv"><span>Network</span><strong data-field="net" class="vt-loading"></strong></div>
                             <div class="vt-kv"><span>Account</span><strong data-field="account">not connected</strong></div>
-                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/eth.png" alt=""> ETH</span><strong data-field="eth">-</strong><small class="sc-usd" data-field="eth-usd"></small></div>
-                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span><strong data-field="usdc">-</strong></div>
-                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</span><strong data-field="vlt">-</strong><small class="sc-usd" data-field="vlt-usd"></small></div>
-                            <div class="vt-kv"><span><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</span><strong data-field="shares">-</strong><small class="sc-sub" data-field="shares-parts"></small><small class="sc-usd" data-field="shares-usd"></small></div>
+                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/eth.png" alt=""> ETH</span><strong data-field="eth" class="vt-loading"></strong><small class="sc-usd" data-field="eth-usd"></small></div>
+                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span><strong data-field="usdc" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</span><strong data-field="vlt" class="vt-loading"></strong><small class="sc-usd" data-field="vlt-usd"></small></div>
+                            <div class="vt-kv"><span><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</span><strong data-field="shares" class="vt-loading"></strong><small class="sc-sub" data-field="shares-parts"></small><small class="sc-usd" data-field="shares-usd"></small></div>
                         </div>
                     </div>
 
@@ -449,7 +669,7 @@
                                 <input type="range" id="dep-usdc-slider" min="0" max="100" step="1" value="0" title="USDC as % of your balance">
                                 <span class="vt-hint" data-field="dep-usdc-pct" style="white-space:nowrap">0%</span>
                             </div>
-                            <input id="dep-usdc" type="text" value="5000" inputmode="decimal">
+                            <input id="dep-usdc" type="text" value="" placeholder="0.0" inputmode="decimal">
                         </div>
                         <div class="vt-row">
                             <label for="dep-vlt"><span class="vt-lab"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT amount</span> <span class="vt-bal" data-token="vlt" data-target="dep-vlt" title="click to use full balance">…</span></label>
@@ -457,7 +677,7 @@
                                 <input type="range" id="dep-vlt-slider" min="0" max="100" step="1" value="0" title="VLT as % of your balance">
                                 <span class="vt-hint" data-field="dep-vlt-pct" style="white-space:nowrap">0%</span>
                             </div>
-                            <input id="dep-vlt" type="text" value="2500" inputmode="decimal">
+                            <input id="dep-vlt" type="text" value="" placeholder="0.0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="dep-out"></span></div>
                         </div>
                         <input type="hidden" id="dep-minshares" value="0">
@@ -485,7 +705,7 @@
                                 <input type="range" id="zap-slider" min="0" max="100" step="1" value="0" title="zap % of your USDC balance">
                                 <span class="vt-hint" data-field="zap-pct" style="white-space:nowrap">0%</span>
                             </div>
-                            <input id="zap-usdc" type="text" value="10000" inputmode="decimal">
+                            <input id="zap-usdc" type="text" value="" placeholder="0.0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="zap-out"></span></div>
                         </div>
                         <input type="hidden" id="zap-swap" value="0">
@@ -630,6 +850,37 @@
                 </div>
             </div>
             <div class="modal-footer" id="settings-footer"><button type="button" class="button primary" id="slip-save" data-dismiss="modal">Save</button></div>
+        </div></div>
+    </div>
+    <!-- Wallet browser: the connected wallet's Bankroll holdings + ≈$ total. Rendered by
+         renderWalletModal() from cached balances × latest prices — opening costs no RPC. -->
+    <div class="modal fade" id="walletModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Wallet <span class="vt-wallet-addr" data-field="w-account"></span></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body">
+                <div class="vt-wallet-row">
+                    <img class="tok-ic" src="img/logo/coingecko/eth.png" alt="">
+                    <span class="vt-wallet-sym">ETH</span>
+                    <span class="vt-wallet-amt"><strong data-field="w-eth">-</strong><small data-field="w-eth-usd"></small></span>
+                </div>
+                <div class="vt-wallet-row">
+                    <img class="tok-ic" src="img/logo/coingecko/vlt.png" alt="">
+                    <span class="vt-wallet-sym">VLT</span>
+                    <span class="vt-wallet-amt"><strong data-field="w-vlt">-</strong><small data-field="w-vlt-usd"></small></span>
+                </div>
+                <div class="vt-wallet-row">
+                    <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt="">
+                    <span class="vt-wallet-sym">USDC</span>
+                    <span class="vt-wallet-amt"><strong data-field="w-usdc">-</strong><small data-field="w-usdc-usd"></small></span>
+                </div>
+                <div class="vt-wallet-row">
+                    <span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span>
+                    <span class="vt-wallet-sym">vltUSDC</span>
+                    <span class="vt-wallet-amt"><strong data-field="w-shares">-</strong><small data-field="w-shares-usd"></small></span>
+                </div>
+                <div class="vt-wallet-total"><span>Total</span><strong data-field="w-total">—</strong></div>
+            </div>
         </div></div>
     </div>
     <div class="modal fade" id="txModal" tabindex="-1" role="dialog" aria-hidden="true">
