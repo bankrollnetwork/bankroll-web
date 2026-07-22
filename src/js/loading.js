@@ -16,7 +16,7 @@ let menu_system = `
     <li class="nav-item"><a href="/security.html" class="notranslate">SECURITY</a></li>
     <li class="nav-item"></li>
     <li class="nav-item"></li>
-    <li class="nav-item"><a href="/retired.html" class="notranslate">RETIRED</a></li>
+    <li class="nav-item"><a href="/archive.html" class="notranslate">ARCHIVE</a></li>
     <!--<li class="nav-item"><a href="https://teespring.com/stores/bankroll-network">SHOP</a></li>-->
 `
 

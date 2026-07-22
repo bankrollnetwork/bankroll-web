@@ -1,2 +1,13 @@
 [build]
   publish = "output.nosync/dist"
+
+# retired.html was renamed to archive.html (2026-07); keep old links working.
+[[redirects]]
+  from = "/retired.html"
+  to = "/archive.html"
+  status = 301
+
+[[redirects]]
+  from = "/retired"
+  to = "/archive.html"
+  status = 301
