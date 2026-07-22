@@ -131,7 +131,10 @@
         .vt-tok-row:hover { background: rgba(219, 210, 219, 0.08); }
         .vt-tok-row.is-active { background: rgba(219, 210, 219, 0.06); box-shadow: inset 0 0 0 1px rgba(219, 210, 219, 0.24); }
         .vt-tok-row .tok-ic { width: 24px; height: 24px; flex: 0 0 auto; }
+        .vt-tok-row-tok { display: flex; flex-direction: column; }
         .vt-tok-row-sym { font-weight: 800; }
+        .vt-tok-row-spot { opacity: 0.6; font-size: 0.75rem; margin-top: 1px; }
+        .vt-tok-row-spot:empty { display: none; }
         .vt-tok-row-bal { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
         .vt-tok-row-bal strong { display: block; font-weight: 700; }
         .vt-tok-row-bal small { display: block; opacity: 0.65; margin-top: 1px; }
@@ -262,7 +265,10 @@
         .vt-wallet-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .vt-wallet-row .tok-ic { width: 24px; height: 24px; }
         .vt-wallet-row .tok-pair .tok-ic + .tok-ic { margin-left: -9px; }
+        .vt-wallet-tok { display: flex; flex-direction: column; }
         .vt-wallet-sym { font-weight: 800; }
+        .vt-wallet-spot { opacity: 0.6; font-size: 0.78rem; margin-top: 1px; }
+        .vt-wallet-spot:empty { display: none; }
         .vt-wallet-amt { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
         .vt-wallet-amt strong { display: block; }
         .vt-wallet-amt small { display: block; opacity: 0.65; margin-top: 2px; }
@@ -894,22 +900,22 @@
             <div class="modal-body">
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/eth.png" alt="">
-                    <span class="vt-wallet-sym">ETH</span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">ETH</span><small class="vt-wallet-spot" data-field="w-eth-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-eth">-</strong><small data-field="w-eth-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/vlt.png" alt="">
-                    <span class="vt-wallet-sym">VLT</span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">VLT</span><small class="vt-wallet-spot" data-field="w-vlt-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-vlt">-</strong><small data-field="w-vlt-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt="">
-                    <span class="vt-wallet-sym">USDC</span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">USDC</span><small class="vt-wallet-spot" data-field="w-usdc-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-usdc">-</strong><small data-field="w-usdc-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">
                     <span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span>
-                    <span class="vt-wallet-sym">vltUSDC</span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">vltUSDC</span><small class="vt-wallet-spot" data-field="w-shares-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-shares">-</strong><small data-field="w-shares-usd"></small></span>
                 </div>
                 <div class="vt-wallet-total"><span>Total</span><strong data-field="w-total">—</strong></div>

@@ -462,6 +462,12 @@
     setField("w-vlt-usd", usdEq(vltUsd));
     setField("w-usdc-usd", usdEq(usdcN)); // a USD stablecoin — ≈$ face value
     setField("w-shares-usd", usdEq(sharesUsd));
+    // Spot prices under each symbol. Shares are liquidity-denominated with a raw supply in the
+    // trillions, so the meaningful unit price is per T — matching the "N T" balance format.
+    setField("w-eth-spot", fmtSpot(spotUsd("ETH")));
+    setField("w-vlt-spot", fmtSpot(spotUsd("VLT")));
+    setField("w-usdc-spot", fmtSpot(1));
+    setField("w-shares-spot", state.navPerShareUsdc > 0 ? fmtSpot(state.navPerShareUsdc * 1e12) + " / T" : "");
     setField("w-total", have ? "≈ $" + localize((ethUsd + vltUsd + usdcN + sharesUsd).toFixed(2)) : "—");
   }
 
@@ -636,6 +642,20 @@
     if (sym === "USDC") return n;
     if (sym === "VLT") return n * (state.priceUsdcPerVlt || 0);
     return n * (state.ethUsd || 0); // ETH
+  }
+  // Per-token USD spot from the same sources the ≈$ readouts use (0 = price not known yet).
+  function spotUsd(sym) {
+    if (sym === "USDC") return 1;
+    if (sym === "VLT") return state.priceUsdcPerVlt || 0;
+    return state.ethUsd || 0; // ETH
+  }
+  // Display formatting for a USD spot price: cents for ≥$1, four decimals for sub-dollar
+  // prices (VLT), significant digits below a cent. "" when unknown (the :empty CSS hides it).
+  function fmtSpot(n) {
+    if (!(isFinite(n) && n > 0)) return "";
+    if (n >= 1) return "$" + localize(n.toFixed(2));
+    if (n >= 0.01) return "$" + n.toFixed(4);
+    return "$" + Number(n.toPrecision(4));
   }
   function renderSwapRoute(rows, note, warn) {
     var el = $f("swp-route"); if (!el) return;
@@ -883,7 +903,8 @@
       return '<button type="button" class="vt-tok-row' + (active ? " is-active" : "") + '" role="option"' +
         ' aria-selected="' + active + '" data-sym="' + sym + '">' +
         '<img class="tok-ic" src="img/logo/coingecko/' + k + '.png" alt="">' +
-        '<span class="vt-tok-row-sym">' + sym + "</span>" +
+        '<span class="vt-tok-row-tok"><span class="vt-tok-row-sym">' + sym + "</span>" +
+        '<small class="vt-tok-row-spot">' + fmtSpot(spotUsd(sym)) + "</small></span>" +
         '<span class="vt-tok-row-bal"><strong>' + localize(formatUnits(balRaw(k), decOf(k), 4)) + "</strong>" +
         "<small>" + usdEq(swapUsd(sym, balRaw(k))) + "</small></span>" +
         "</button>";
