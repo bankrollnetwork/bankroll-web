@@ -1941,6 +1941,44 @@
     activate(saved);
   }
 
+  // Panel subtitles → info popovers: move each .panel-heading's subtitle <p> into a small
+  // anchored popover behind a right-floated ⓘ button. Generic — runs over every panel, so
+  // panels added later opt in just by having a subtitle. One popover open at a time; outside
+  // click / Escape close (wired here, alongside the token-menu handlers' pattern).
+  function closeInfoPops() {
+    $(".vt-info-pop").attr("hidden", true);
+    $(".vt-info-btn").attr("aria-expanded", "false");
+  }
+  function setupPanelInfo() {
+    var heads = document.querySelectorAll(".calculator-panel .panel-heading");
+    for (var i = 0; i < heads.length; i++) {
+      var p = heads[i].querySelector("div > p");
+      if (!p) continue;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "vt-info-btn";
+      btn.title = "About this panel";
+      btn.setAttribute("aria-label", "About this panel");
+      btn.setAttribute("aria-expanded", "false");
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+      var pop = document.createElement("div");
+      pop.className = "vt-info-pop";
+      pop.hidden = true;
+      pop.appendChild(p); // the subtitle IS the info content — moved, not duplicated
+      heads[i].appendChild(btn);
+      heads[i].appendChild(pop);
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var mine = this.parentNode.querySelector(".vt-info-pop");
+        var wasOpen = !mine.hidden;
+        closeInfoPops();
+        if (!wasOpen) { mine.hidden = false; this.setAttribute("aria-expanded", "true"); }
+      });
+    }
+    $(document).on("click", closeInfoPops);
+    $(document).on("keydown", function (e) { if (e.key === "Escape") closeInfoPops(); });
+  }
+
   // Friendly NETWORK-card label from a chainId (falls back to the raw id for anything unmapped).
   function netName(cid) {
     var known = { 1: "Ethereum", 31337: "Hardhat fork", 1337: "Hardhat" };
@@ -2113,6 +2151,7 @@
   $(function () {
     loadConfig();
     setupTabs(); // consolidate panels into the tab control (runs while #app is gated/hidden)
+    setupPanelInfo(); // panel subtitles → right-floated ⓘ popovers
     applyGate(); // pre-connect: surface the shared vltUSDC Stats panel beside the connect card
     applyChainUI(); // hide the dev Config tab + set the footer for the pre-connect context
     state.advDeposits = localStorage.getItem(ADV_KEY) === "1"; // default OFF (anything unsaved → false)

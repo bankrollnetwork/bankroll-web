@@ -30,6 +30,20 @@
             cursor: pointer; padding: 10px 16px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
         .vt-tab:hover { opacity: 0.85; }
         .vt-tab.active { opacity: 1; border-bottom-color: var(--white); }
+        /* Panel info popovers: setupPanelInfo() moves each .panel-heading subtitle <p> into a
+           small anchored popover behind a right-floated ⓘ button, decluttering the headings. */
+        .panel-heading { position: relative; }
+        .vt-info-btn { display: inline-flex; align-items: center; justify-content: center; margin-left: auto;
+            align-self: flex-start; background: none; border: 0; color: inherit; cursor: pointer;
+            opacity: 0.5; line-height: 1; padding: 4px; }
+        .vt-info-btn:hover, .vt-info-btn[aria-expanded="true"] { opacity: 1; }
+        .vt-info-btn svg { display: block; width: 1.1rem; height: 1.1rem; }
+        .vt-info-pop { position: absolute; top: calc(100% + 2px); right: 0; z-index: 25;
+            width: max-content; max-width: min(360px, 82vw); padding: 12px 14px;
+            border-radius: var(--radius); border: 1px solid rgba(219, 210, 219, 0.2);
+            background: var(--paper-2); box-shadow: var(--shadow); font-size: 0.9rem; }
+        .vt-info-pop[hidden] { display: none; }
+        .vt-info-pop p { margin: 0; color: var(--paper-6); }
         /* Nested sub-tab row (second level under the main tabs): mirrors the settings-modal
            tab look. Only the active group's row is shown; groups without one (Swap, Config)
            show none. [hidden] must outrank the flex display. */
