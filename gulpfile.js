@@ -103,9 +103,6 @@ gulp.task("minifyhtml", function () {
 gulp.task("minifyhtml", function () {
     return gulp.src('src/*.html')
         .pipe(useref())
-        .pipe(cachebust({
-            type: 'timestamp'
-        }))
         //.pipe(htmlmin())
         .pipe(gulp.dest('output.nosync/dist'))
 });
@@ -114,8 +111,21 @@ gulp.task("minify:index", function (callback) {
     return gulp.src('src/index.compile.html')
         .pipe(useref())
         .pipe(gulpIf('*.css', cssnano({zindex: false})))
+        .pipe(gulp.dest('output.nosync/dist'))
+});
+
+// Content-hash cache busting for the built site: rewrites every local script/stylesheet
+// reference in dist HTML to ?v=<md5-of-the-file>, so a URL changes exactly when its file's
+// content does (unchanged files keep identical URLs across builds). MD5 mode reads each
+// referenced file from disk, so this MUST run as the build's final step — after minifyhtml
+// has written the useref bundles and the copy tasks have landed js/css/font in dist; an
+// in-stream pass would crash on bundles that don't exist on disk yet. (This replaces the
+// old in-stream ?t=<build time> stamp, which re-busted every asset on every build.)
+gulp.task("cachebust", function () {
+    return gulp.src('output.nosync/dist/*.html')
         .pipe(cachebust({
-            type: 'timestamp'
+            type: 'MD5',
+            basePath: 'output.nosync/dist/'
         }))
         .pipe(gulp.dest('output.nosync/dist'))
 });
@@ -179,7 +189,7 @@ gulp.task('local', function (callback) {
 
 gulp.task('build', function (callback) {
     //runSequence('clean:dist','sass', "minifyhtml", "images",'favicon', 'font', 'media', 'assets', 'wellknown',
-    runSequence('bootstrap','sass',"minifyjs", "minifycss", "minifyhtml", "images",'favicon', 'font', 'media', 'assets', 'wellknown',
+    runSequence('bootstrap','sass',"minifyjs", "minifycss", "minifyhtml", "images",'favicon', 'font', 'media', 'assets', 'wellknown', 'cachebust',
         callback
     )
     
