@@ -469,6 +469,21 @@
     setField("w-usdc-spot", fmtSpot(1));
     setField("w-shares-spot", state.navPerShareUsdc > 0 ? fmtSpot(state.navPerShareUsdc * 1e12) + " / T" : "");
     setField("w-total", have ? "≈ $" + localize((ethUsd + vltUsd + usdcN + sharesUsd).toFixed(2)) : "—");
+    // Copy / explorer actions beside each symbol. ETH has no contract — its pair targets the
+    // CONNECTED ACCOUNT (copy your address / view it on Etherscan); token rows target the
+    // contract (the share token IS the vault). Explorer links hide off-mainnet (fork has none).
+    var addrs = { eth: state.account, vlt: state.tokens.vlt, usdc: state.tokens.usdc, shares: state.cfg.vault };
+    var onMainnet = state.chainId === 1;
+    ["eth", "vlt", "usdc", "shares"].forEach(function (k) {
+      var addr = addrs[k] || "";
+      var cp = document.querySelector('.vt-wallet-act[data-act="copy"][data-tok="' + k + '"]');
+      if (cp) { cp.setAttribute("data-addr", addr); cp.style.display = addr ? "" : "none"; }
+      var ex = document.querySelector('.vt-wallet-act[data-act="explore"][data-tok="' + k + '"]');
+      if (ex) {
+        ex.href = addr ? "https://etherscan.io/" + (k === "eth" ? "address/" : "token/") + addr : "#";
+        ex.style.display = (addr && onMainnet) ? "" : "none";
+      }
+    });
   }
 
   // ── swapData builder (mirrors scripts/dev/build_vlt_route.js) ───────────────
@@ -2247,6 +2262,15 @@
     $("#swap-approve-usdc").on("click", txGuard("USDC approval for swapping", function () { return toggleSwapApproval("USDC"); }));
     $("#swap-approve-vlt").on("click", txGuard("VLT approval for swapping", function () { return toggleSwapApproval("VLT"); }));
     $("#wallet-open").on("click", function () { renderWalletModal(); $("#walletModal").modal("show"); });
+    // Wallet-row copy buttons: clipboard + a brief checkmark swap as feedback.
+    $(document).on("click", '.vt-wallet-act[data-act="copy"]', function () {
+      var btn = this, addr = btn.getAttribute("data-addr");
+      if (!addr) return;
+      try { navigator.clipboard.writeText(addr); } catch (e) {}
+      var orig = btn.innerHTML;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(function () { btn.innerHTML = orig; }, 1200);
+    });
     $("#settings-open").on("click", openSettings);
     $(".vt-mtab").on("click", function () { setSettingsTab($(this).data("stab")); });
     $("#slip-range").on("input", function () { $("#slip-input").val($(this).val()); paintRange(this); });

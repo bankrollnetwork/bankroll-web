@@ -266,7 +266,14 @@
         .vt-wallet-row .tok-ic { width: 24px; height: 24px; }
         .vt-wallet-row .tok-pair .tok-ic + .tok-ic { margin-left: -9px; }
         .vt-wallet-tok { display: flex; flex-direction: column; }
-        .vt-wallet-sym { font-weight: 800; }
+        .vt-wallet-symrow { display: inline-flex; align-items: center; gap: 2px; }
+        .vt-wallet-sym { font-weight: 800; margin-right: 4px; }
+        /* Tiny copy / etherscan actions beside the symbol (renderWalletModal fills the targets;
+           explorer links hide off-mainnet). Muted until hover so they don't compete with data. */
+        .vt-wallet-act { display: inline-flex; align-items: center; justify-content: center; padding: 3px;
+            background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.4; line-height: 1; }
+        .vt-wallet-act:hover { opacity: 1; }
+        .vt-wallet-act svg { display: block; width: 0.8rem; height: 0.8rem; }
         .vt-wallet-spot { opacity: 0.6; font-size: 0.78rem; margin-top: 1px; }
         .vt-wallet-spot:empty { display: none; }
         .vt-wallet-amt { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
@@ -900,22 +907,22 @@
             <div class="modal-body">
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/eth.png" alt="">
-                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">ETH</span><small class="vt-wallet-spot" data-field="w-eth-spot"></small></span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-symrow"><span class="vt-wallet-sym">ETH</span><button type="button" class="vt-wallet-act" data-act="copy" data-tok="eth" title="Copy your wallet address" aria-label="Copy your wallet address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" data-act="explore" data-tok="eth" href="#" target="_blank" rel="noopener" title="View your address on Etherscan" aria-label="View your address on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span><small class="vt-wallet-spot" data-field="w-eth-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-eth">-</strong><small data-field="w-eth-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/vlt.png" alt="">
-                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">VLT</span><small class="vt-wallet-spot" data-field="w-vlt-spot"></small></span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-symrow"><span class="vt-wallet-sym">VLT</span><button type="button" class="vt-wallet-act" data-act="copy" data-tok="vlt" title="Copy VLT contract address" aria-label="Copy VLT contract address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" data-act="explore" data-tok="vlt" href="#" target="_blank" rel="noopener" title="View VLT on Etherscan" aria-label="View VLT on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span><small class="vt-wallet-spot" data-field="w-vlt-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-vlt">-</strong><small data-field="w-vlt-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt="">
-                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">USDC</span><small class="vt-wallet-spot" data-field="w-usdc-spot"></small></span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-symrow"><span class="vt-wallet-sym">USDC</span><button type="button" class="vt-wallet-act" data-act="copy" data-tok="usdc" title="Copy USDC contract address" aria-label="Copy USDC contract address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" data-act="explore" data-tok="usdc" href="#" target="_blank" rel="noopener" title="View USDC on Etherscan" aria-label="View USDC on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span><small class="vt-wallet-spot" data-field="w-usdc-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-usdc">-</strong><small data-field="w-usdc-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">
                     <span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span>
-                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">vltUSDC</span><small class="vt-wallet-spot" data-field="w-shares-spot"></small></span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-symrow"><span class="vt-wallet-sym">vltUSDC</span><button type="button" class="vt-wallet-act" data-act="copy" data-tok="shares" title="Copy vltUSDC contract address" aria-label="Copy vltUSDC contract address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" data-act="explore" data-tok="shares" href="#" target="_blank" rel="noopener" title="View vltUSDC on Etherscan" aria-label="View vltUSDC on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span><small class="vt-wallet-spot" data-field="w-shares-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-shares">-</strong><small data-field="w-shares-usd"></small></span>
                 </div>
                 <div class="vt-wallet-total"><span>Total</span><strong data-field="w-total">—</strong></div>
