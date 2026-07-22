@@ -30,6 +30,15 @@
             cursor: pointer; padding: 10px 16px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
         .vt-tab:hover { opacity: 0.85; }
         .vt-tab.active { opacity: 1; border-bottom-color: var(--white); }
+        /* Nested sub-tab row (second level under the main tabs): mirrors the settings-modal
+           tab look. Only the active group's row is shown; groups without one (Swap, Config)
+           show none. [hidden] must outrank the flex display. */
+        .vt-subtabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .vt-subtabs[hidden] { display: none; }
+        .vt-subtab { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; font-size: 0.85rem; opacity: 0.55;
+            cursor: pointer; padding: 8px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .vt-subtab:hover { opacity: 0.85; }
+        .vt-subtab.active { opacity: 1; border-bottom-color: var(--white); }
         .vt-tab-content { margin-top: 18px; }
         .vt-tab-pane { display: none; }
         .vt-tab-pane.active { display: block; }
@@ -482,16 +491,24 @@
         <section class="main-section" id="app" style="display:none">
             <div class="wrap">
 
-                <!-- Tab control. Panels below are moved into these panes by setupTabs() on load. -->
+                <!-- Two-level tab control: top row = groups (fits one mobile line), second row =
+                     the active group's leaves (only Stats and vltUSDC have one). The LEAF panes
+                     and ids are unchanged — setupTabs() moves panels into them as before. -->
                 <nav class="vt-tabs" id="vt-tabs">
-                    <button type="button" class="vt-tab" data-tab="stats">Stats</button>
-                    <button type="button" class="vt-tab" data-tab="your-stats">Your Stats</button>
-                    <button type="button" class="vt-tab" data-tab="deposit">Deposit</button>
-                    <button type="button" class="vt-tab" data-tab="withdraw">Withdraw</button>
-                    <button type="button" class="vt-tab" data-tab="swap">Swap</button>
-                    <button type="button" class="vt-tab" data-tab="advanced">Advanced</button>
-                    <button type="button" class="vt-tab" data-tab="config">Config</button>
+                    <button type="button" class="vt-tab" data-group="stats">Stats</button>
+                    <button type="button" class="vt-tab" data-group="swap">Swap</button>
+                    <button type="button" class="vt-tab" data-group="vault">vltUSDC</button>
+                    <button type="button" class="vt-tab" data-group="config">Config</button>
                     <span class="vt-tab-actions"><button type="button" id="wallet-open" class="vt-refresh" title="Wallet" aria-label="Wallet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></button><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="refresh-all" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span>
+                </nav>
+                <nav class="vt-subtabs" id="vt-subtabs-stats" hidden aria-label="Stats views">
+                    <button type="button" class="vt-subtab" data-tab="stats">Global</button>
+                    <button type="button" class="vt-subtab" data-tab="your-stats">Yours</button>
+                </nav>
+                <nav class="vt-subtabs" id="vt-subtabs-vault" hidden aria-label="Vault actions">
+                    <button type="button" class="vt-subtab" data-tab="deposit">Deposit</button>
+                    <button type="button" class="vt-subtab" data-tab="withdraw">Withdraw</button>
+                    <button type="button" class="vt-subtab" data-tab="advanced">Advanced</button>
                 </nav>
                 <div class="vt-tab-content">
                     <div class="vt-tab-pane" id="pane-stats"></div>

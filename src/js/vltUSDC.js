@@ -1812,15 +1812,10 @@
   // Show/hide dev-only affordances based on the active chain: the Config tab (Configuration + Fork
   // Cheats panels live there) and the footer disclaimer. Production chains hide the dev tools.
   function applyChainUI() {
-    var cfgTab = document.querySelector('.vt-tab[data-tab="config"]');
+    var cfgTab = document.querySelector('.vt-tab[data-group="config"]');
     if (cfgTab) cfgTab.style.display = state.dev ? "" : "none";
-    if (!state.dev) {
-      var active = document.querySelector(".vt-tab.active");
-      if (active && active.getAttribute("data-tab") === "config") {
-        var stats = document.querySelector('.vt-tab[data-tab="stats"]');
-        if (stats) stats.click(); // don't leave the now-hidden Config tab selected
-      }
-    }
+    // Don't leave the now-hidden Config tab selected.
+    if (!state.dev && activeLeaf === "config" && activateTab) activateTab("stats");
     var foot = document.querySelector(".site-footer .footer-inner p");
     if (foot) foot.textContent = state.dev
       ? "Internal dev/test tool. Local Hardhat fork only — not for production use."
@@ -1835,15 +1830,10 @@
   // Tab show/hide follows the same don't-strand-the-active-tab pattern as applyChainUI().
   // Both buttons are state-dependent like the approval toggles: the label states the action.
   function applyAdvancedUI() {
-    var tab = document.querySelector('.vt-tab[data-tab="advanced"]');
+    var tab = document.querySelector('.vt-subtab[data-tab="advanced"]');
     if (tab) tab.style.display = state.advDeposits ? "" : "none";
-    if (!state.advDeposits) {
-      var active = document.querySelector(".vt-tab.active");
-      if (active && active.getAttribute("data-tab") === "advanced") {
-        var stats = document.querySelector('.vt-tab[data-tab="stats"]');
-        if (stats) stats.click(); // don't leave the now-hidden Advanced tab selected
-      }
-    }
+    // Don't leave the now-hidden Advanced leaf selected — fall back within the vault group.
+    if (!state.advDeposits && activeLeaf === "advanced" && activateTab) activateTab("deposit");
     $("#adv-deposits-toggle").text(state.advDeposits ? "Disable" : "Enable");
     renderApprovalRows(); // the vault approvals follow the setting (a live allowance keeps its row)
 
@@ -1864,9 +1854,24 @@
   }
 
   // Consolidate the panels into the tab control: move each panel (by a known inner id) into its pane,
-  // drop the now-empty grid, then wire tab switching + remember the active tab. Runs once on load
-  // while #app is still gated/hidden, so there's no visible reflow.
-  var TAB_KEY = "vaultTestTab";
+  // drop the now-empty grid, then wire the TWO-LEVEL tab switching + remember the active leaf.
+  // Top row = groups (Stats | Swap | vltUSDC | Config) so mobile fits one line; Stats and vltUSDC
+  // own a sub-row of leaves. Leaf panes keep their pre-nesting ids, so applyGate()'s shared-panel
+  // move and every pane reference are untouched. Runs once on load while #app is gated/hidden.
+  var TAB_KEY = "vaultTestTab";          // last active LEAF (pre-nesting saved values still map)
+  var TAB_SUBS_KEY = "vaultTestSubTabs"; // per-group last-used leaf (JSON), so groups remember
+  var TAB_GROUPS = {
+    stats: ["stats", "your-stats"],
+    swap: ["swap"],
+    vault: ["deposit", "withdraw", "advanced"],
+    config: ["config"],
+  };
+  var activeLeaf = null;  // current leaf (the apply* helpers' don't-strand checks read this)
+  var activateTab = null; // assigned by setupTabs; callable from applyChainUI/applyAdvancedUI
+  function tabGroupOf(leaf) {
+    for (var g in TAB_GROUPS) if (TAB_GROUPS[g].indexOf(leaf) !== -1) return g;
+    return "stats";
+  }
   function setupTabs() {
     var groups = {
       "pane-stats": ["vault-stats"],
@@ -1888,17 +1893,48 @@
     var grid = document.querySelector(".vt-grid");
     if (grid) grid.parentNode.removeChild(grid);
 
-    function activate(tab) {
+    function activate(leaf) {
+      var group = tabGroupOf(leaf);
+      activeLeaf = leaf;
       var tabs = document.querySelectorAll(".vt-tab");
-      for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle("active", tabs[i].getAttribute("data-tab") === tab);
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle("active", tabs[i].getAttribute("data-group") === group);
+      // Only the active group's sub-row shows (Swap/Config have none at all).
+      var rows = document.querySelectorAll(".vt-subtabs");
+      for (var r = 0; r < rows.length; r++) rows[r].hidden = rows[r].id !== "vt-subtabs-" + group;
+      var subs = document.querySelectorAll(".vt-subtab");
+      for (var j = 0; j < subs.length; j++) subs[j].classList.toggle("active", subs[j].getAttribute("data-tab") === leaf);
       var panes = document.querySelectorAll(".vt-tab-pane");
-      for (var j = 0; j < panes.length; j++) panes[j].classList.toggle("active", panes[j].id === "pane-" + tab);
-      try { localStorage.setItem(TAB_KEY, tab); } catch (e) {}
+      for (var p = 0; p < panes.length; p++) panes[p].classList.toggle("active", panes[p].id === "pane-" + leaf);
+      try {
+        localStorage.setItem(TAB_KEY, leaf);
+        var subsMap = {};
+        try { subsMap = JSON.parse(localStorage.getItem(TAB_SUBS_KEY) || "{}"); } catch (e2) {}
+        subsMap[group] = leaf;
+        localStorage.setItem(TAB_SUBS_KEY, JSON.stringify(subsMap));
+      } catch (e) {}
     }
+    activateTab = activate;
+
+    // Group click → that group's last-used leaf (skipping a hidden one, e.g. Advanced off).
     var btns = document.querySelectorAll(".vt-tab");
     for (var k = 0; k < btns.length; k++) {
-      btns[k].addEventListener("click", function () { activate(this.getAttribute("data-tab")); });
+      btns[k].addEventListener("click", function () {
+        var g = this.getAttribute("data-group");
+        var leafs = TAB_GROUPS[g] || ["stats"];
+        var subsMap = {};
+        try { subsMap = JSON.parse(localStorage.getItem(TAB_SUBS_KEY) || "{}"); } catch (e) {}
+        var leaf = subsMap[g];
+        if (leafs.indexOf(leaf) === -1) leaf = leafs[0];
+        var el = document.querySelector('.vt-subtab[data-tab="' + leaf + '"]');
+        if (el && el.style.display === "none") leaf = leafs[0];
+        activate(leaf);
+      });
     }
+    var sbtns = document.querySelectorAll(".vt-subtab");
+    for (var s = 0; s < sbtns.length; s++) {
+      sbtns[s].addEventListener("click", function () { activate(this.getAttribute("data-tab")); });
+    }
+
     var saved = "stats";
     try { saved = localStorage.getItem(TAB_KEY) || "stats"; } catch (e) {}
     if (!document.getElementById("pane-" + saved)) saved = "stats";
