@@ -274,6 +274,8 @@
             background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.4; line-height: 1; }
         .vt-wallet-act:hover { opacity: 1; }
         .vt-wallet-act svg { display: block; width: 0.8rem; height: 0.8rem; }
+        .modal-title .vt-wallet-act { vertical-align: -3px; }
+        .modal-title .vt-wallet-addr { margin-right: 2px; }
         .vt-wallet-spot { opacity: 0.6; font-size: 0.78rem; margin-top: 1px; }
         .vt-wallet-spot:empty { display: none; }
         .vt-wallet-amt { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
@@ -902,12 +904,12 @@
          renderWalletModal() from cached balances × latest prices — opening costs no RPC. -->
     <div class="modal fade" id="walletModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document"><div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Wallet <span class="vt-wallet-addr" data-field="w-account"></span></h5>
+            <div class="modal-header"><h5 class="modal-title">Wallet <span class="vt-wallet-addr" data-field="w-account"></span><button type="button" class="vt-wallet-act" data-act="copy" data-tok="account" title="Copy your wallet address" aria-label="Copy your wallet address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" data-act="explore" data-tok="account" href="#" target="_blank" rel="noopener" title="View your address on Etherscan" aria-label="View your address on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
             <div class="modal-body">
                 <div class="vt-wallet-row">
                     <img class="tok-ic" src="img/logo/coingecko/eth.png" alt="">
-                    <span class="vt-wallet-tok"><span class="vt-wallet-symrow"><span class="vt-wallet-sym">ETH</span><button type="button" class="vt-wallet-act" data-act="copy" data-tok="eth" title="Copy your wallet address" aria-label="Copy your wallet address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" data-act="explore" data-tok="eth" href="#" target="_blank" rel="noopener" title="View your address on Etherscan" aria-label="View your address on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span><small class="vt-wallet-spot" data-field="w-eth-spot"></small></span>
+                    <span class="vt-wallet-tok"><span class="vt-wallet-sym">ETH</span><small class="vt-wallet-spot" data-field="w-eth-spot"></small></span>
                     <span class="vt-wallet-amt"><strong data-field="w-eth">-</strong><small data-field="w-eth-usd"></small></span>
                 </div>
                 <div class="vt-wallet-row">

@@ -469,18 +469,18 @@
     setField("w-usdc-spot", fmtSpot(1));
     setField("w-shares-spot", state.navPerShareUsdc > 0 ? fmtSpot(state.navPerShareUsdc * 1e12) + " / T" : "");
     setField("w-total", have ? "≈ $" + localize((ethUsd + vltUsd + usdcN + sharesUsd).toFixed(2)) : "—");
-    // Copy / explorer actions beside each symbol. ETH has no contract — its pair targets the
-    // CONNECTED ACCOUNT (copy your address / view it on Etherscan); token rows target the
-    // contract (the share token IS the vault). Explorer links hide off-mainnet (fork has none).
-    var addrs = { eth: state.account, vlt: state.tokens.vlt, usdc: state.tokens.usdc, shares: state.cfg.vault };
+    // Copy / explorer actions: the header pair targets the CONNECTED ACCOUNT (right of the
+    // address); token rows target the contract (the share token IS the vault). ETH has neither —
+    // no contract, and the account already owns the header pair. Explorer links hide off-mainnet.
+    var addrs = { account: state.account, vlt: state.tokens.vlt, usdc: state.tokens.usdc, shares: state.cfg.vault };
     var onMainnet = state.chainId === 1;
-    ["eth", "vlt", "usdc", "shares"].forEach(function (k) {
+    ["account", "vlt", "usdc", "shares"].forEach(function (k) {
       var addr = addrs[k] || "";
       var cp = document.querySelector('.vt-wallet-act[data-act="copy"][data-tok="' + k + '"]');
       if (cp) { cp.setAttribute("data-addr", addr); cp.style.display = addr ? "" : "none"; }
       var ex = document.querySelector('.vt-wallet-act[data-act="explore"][data-tok="' + k + '"]');
       if (ex) {
-        ex.href = addr ? "https://etherscan.io/" + (k === "eth" ? "address/" : "token/") + addr : "#";
+        ex.href = addr ? "https://etherscan.io/" + (k === "account" ? "address/" : "token/") + addr : "#";
         ex.style.display = (addr && onMainnet) ? "" : "none";
       }
     });
