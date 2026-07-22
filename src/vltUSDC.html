@@ -165,14 +165,16 @@
            icon-font glyph) so the icon rotates perfectly in place — a font glyph sits off-center in
            its line box, which made the spin look off-center / like the whole button turned. */
         .vt-refresh { display: inline-flex; align-items: center; justify-content: center;
-            background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.5; line-height: 1; padding: 4px; }
+            background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.5; line-height: 1; padding: 6px; }
         .vt-refresh:hover { opacity: 1; }
         .vt-refresh svg { display: block; width: 1.05rem; height: 1.05rem; transform-origin: 50% 50%; }
         .vt-refresh svg.spin { animation: vt-spin 0.6s linear infinite; }
         @keyframes vt-spin { to { transform: rotate(360deg); } }
         /* Settings gear + the page's single refresh, pushed to the far end of the tab row. The
            wrapper owns the auto-margin so the two buttons sit adjacent against the right edge. */
-        .vt-tab-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; }
+        /* Roomier than the old 2px gap so the wallet/settings/refresh icons aren't fat-fingered
+           on touch (≈1.5× the center-to-center distance, with the padding bump above). */
+        .vt-tab-actions { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
         /* Mobile: the tabs wrap, so give the actions their own full-width row ABOVE the tabs
            (order -1 + 100% basis forces the line break; content stays right-justified). */
         @media (max-width: 760px) {
