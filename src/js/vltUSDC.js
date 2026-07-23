@@ -1892,17 +1892,16 @@
     // The pre-connect landing content (marketing + architecture) follows the hero/gate.
     var landing = document.getElementById("vt-landing");
     if (landing) landing.style.display = connected ? "none" : "";
-    // The vltUSDC Stats panel is SHARED between the two states: while disconnected it sits in the
-    // gate's left column (populated via the HTTP read RPC — the boot path already runs
-    // refreshDashboard() pre-connect); once connected it moves back into the Stats tab. Same DOM
-    // node either way, so data-field updates keep working regardless of where it lives.
-    // (#vt-gate's own display toggle above covers visibility.)
-    var pub = document.getElementById("vt-public-stats");
-    var panel = document.getElementById("vault-stats");
-    if (pub && panel) {
-      var host = connected ? document.getElementById("pane-stats") : pub;
-      if (host && panel.parentNode !== host) host.appendChild(panel);
-    }
+    // The two stats panels are SHARED between the states: while disconnected they sit in the
+    // gate's public hosts (populated via the HTTP read RPC — the boot path already runs
+    // refreshDashboard() pre-connect, which covers refreshVltStats() too); once connected they
+    // move back into their Stats-tab panes. Same DOM nodes either way, so data-field updates
+    // keep working regardless of where they live. (#vt-gate's display toggle covers visibility.)
+    [["vault-stats", "pane-stats", "vt-public-stats"], ["vlt-stats", "pane-vlt", "vt-public-vlt"]].forEach(function (m) {
+      var panel = document.getElementById(m[0]);
+      var host = document.getElementById(connected ? m[1] : m[2]);
+      if (panel && host && panel.parentNode !== host) host.appendChild(panel);
+    });
   }
 
   // Show/hide dev-only affordances based on the active chain: the Config tab (Configuration + Fork
@@ -1957,7 +1956,7 @@
   var TAB_KEY = "vaultTestTab";          // last active LEAF (pre-nesting saved values still map)
   var TAB_SUBS_KEY = "vaultTestSubTabs"; // per-group last-used leaf (JSON), so groups remember
   var TAB_GROUPS = {
-    stats: ["stats", "vlt", "your-stats"],
+    stats: ["vlt", "stats", "your-stats"],
     swap: ["swap"],
     vault: ["deposit", "withdraw", "advanced"],
     config: ["config"],
@@ -2365,6 +2364,15 @@
     setInterval(function () { fetchMainnetPrices(true); }, 60000);
 
     applyGate(); // gated until connect (the #app inline display:none is the pre-JS fallback)
+    // Pre-connect Stats switcher (VLT | vltUSDC): toggles which shared panel's public host shows.
+    $(".vt-pubtab").on("click", function () {
+      $(".vt-pubtab").removeClass("active");
+      $(this).addClass("active");
+      var which = $(this).data("pub");
+      document.getElementById("vt-public-vlt").hidden = which !== "vlt";
+      document.getElementById("vt-public-stats").hidden = which !== "vltusdc";
+    });
+
     // The landing CTAs (hero cards + closing panel) forward to the header CONNECT button
     // (same connect flow; the click is a user gesture so the wallet prompt still opens).
     // data-start-tab pre-activates a tab — the tab controls work while #app is hidden and

@@ -89,8 +89,16 @@
         .vt-hero-card-head .tok-pair .tok-ic + .tok-ic { margin-left: -10px; }
         .vt-hero-card p { margin: 0; color: var(--paper-6); font-size: 0.95rem; flex: 1; }
         .vt-hero-card .button { margin-top: 6px; }
-        /* Pre-connect stats gate — shown until a wallet connects, then #app reveals. */
+        /* Pre-connect stats gate — shown until a wallet connects, then #app reveals. Title + a
+           VLT|vltUSDC switcher styled like the sub-tab row but with its OWN classes so
+           setupTabs()'s .vt-subtab wiring never touches it. */
         .vt-gate { padding: 36px 0 72px; }
+        .vt-gate-title { color: var(--white); font-size: clamp(1.55rem, 3vw, 2.2rem); margin: 0 0 10px; }
+        .vt-subtabs-look { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .vt-pubtab { background: none; border: 0; color: inherit; font: inherit; font-weight: 800; font-size: 0.85rem; opacity: 0.55;
+            cursor: pointer; padding: 8px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+        .vt-pubtab:hover { opacity: 0.85; }
+        .vt-pubtab.active { opacity: 1; border-bottom-color: var(--white); }
         /* Pre-connect landing sections (#vt-landing, hidden by applyGate() once connected):
            spacing the shared theme classes don't own, + anchor offset under the fixed header. */
         #vt-landing .overview { margin-top: 72px; }
@@ -363,13 +371,19 @@
             </div>
         </section>
 
-        <!-- Pre-connect: read-only vltUSDC Stats, fed by the read RPC (the hero's Connect Wallet CTA
-             is the connect affordance). Everything below stays hidden until a wallet connects. The
-             stats panel is SHARED — applyGate() moves it into #vt-public-stats while disconnected
-             and back into the Stats tab once connected. -->
+        <!-- Pre-connect: read-only Stats (VLT | vltUSDC), fed by the read RPC. Both panels are
+             SHARED with the app — applyGate() moves them into these public hosts while
+             disconnected and back into their Stats-tab panes once connected. The .vt-pubtab
+             switcher is deliberately NOT .vt-subtab (setupTabs wires that class). -->
         <section class="vt-gate" id="vt-gate">
             <div class="wrap">
-                <div id="vt-public-stats"></div>
+                <h2 class="vt-gate-title">Stats</h2>
+                <nav class="vt-subtabs-look" aria-label="Public stats views">
+                    <button type="button" class="vt-pubtab active" data-pub="vlt">VLT</button>
+                    <button type="button" class="vt-pubtab" data-pub="vltusdc">vltUSDC</button>
+                </nav>
+                <div id="vt-public-vlt" style="margin-top: 18px;"></div>
+                <div id="vt-public-stats" style="margin-top: 18px;" hidden></div>
             </div>
         </section>
 
@@ -557,8 +571,8 @@
                     <span class="vt-tab-actions"><button type="button" id="wallet-open" class="vt-refresh" title="Wallet" aria-label="Wallet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></button><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="refresh-all" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span>
                 </nav>
                 <nav class="vt-subtabs" id="vt-subtabs-stats" hidden aria-label="Stats views">
-                    <button type="button" class="vt-subtab" data-tab="stats">vltUSDC</button>
                     <button type="button" class="vt-subtab" data-tab="vlt">VLT</button>
+                    <button type="button" class="vt-subtab" data-tab="stats">vltUSDC</button>
                     <button type="button" class="vt-subtab" data-tab="your-stats">Yours</button>
                 </nav>
                 <nav class="vt-subtabs" id="vt-subtabs-vault" hidden aria-label="Vault actions">
