@@ -21,8 +21,9 @@
     <style>
         .vt-grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
         /* Sub-lines under a Your-Stats card value (the VLT|USDC share breakdown and the ≈$
-           equivalents); hidden when empty. */
-        .vt-cards .sc-usd, .vt-cards .sc-sub { display: block; margin-top: 3px; font-size: 0.85rem; color: var(--white); opacity: 0.7; }
+           equivalents); hidden when empty. Dim via text-color ALPHA, never opacity — opacity on
+           a container composites the token icons inside it too (site rule: logos never dim). */
+        .vt-cards .sc-usd, .vt-cards .sc-sub { display: block; margin-top: 3px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); }
         .vt-cards .sc-usd:empty, .vt-cards .sc-sub:empty { display: none; }
         /* Tab control consolidating the panels (panes populated by setupTabs()). */
         .vt-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 24px; border-bottom: 1px solid rgba(255,255,255,0.12); }
@@ -84,7 +85,8 @@
         #vt-landing .notice-panel { margin-top: 26px; }
         #how { scroll-margin-top: 84px; }
         .vt-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-        .vt-row label { font-weight: 700; font-size: 0.85rem; opacity: 0.85; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        /* Label dim via text-color alpha (logos inside labels never dim — see the .sc-usd note). */
+        .vt-row label { font-weight: 700; font-size: 0.85rem; color: rgba(219, 210, 219, 0.85); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
         .vt-row input, .vt-row select {
             width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18);
             background: rgba(255,255,255,0.04); color: inherit; font: inherit;
@@ -103,11 +105,6 @@
         /* .result-grid span/.status-card span force block in the theme — outrank them so the
            badge stays in the line it decorates. */
         span.tok-pair, .result-grid span.tok-pair, .status-card span.tok-pair { display: inline; white-space: nowrap; }
-        /* The .vt-kv span { opacity: 0.7 } label-dimming below also matches the badge span nested
-           in VALUE lines, compositing its two icons at 70% (single icons are bare imgs — never
-           dimmed). Reset at higher specificity; label-embedded badges keep the label's dim via
-           their PARENT span, which this doesn't touch. */
-        .vt-kv span.tok-pair, .vt-kv strong span.tok-pair { opacity: 1; }
         .tok-pair .tok-ic:first-child { position: relative; z-index: 1; }
         .tok-pair .tok-ic + .tok-ic { margin-left: -7px; }
         /* Large badge for headings (the pre-connect hero title): em-sized so it tracks the
@@ -150,17 +147,17 @@
         .vt-recv > span[data-field] { opacity: 0.7; }
         .vt-recv:has([data-field]:empty) { display: none; }
         /* Clickable "balance: X (max)" chip sitting on the right of an input's label. */
-        /* Match the "you receive" estimate value (.vt-recv [data-field]): same 0.85rem, white text, and
-           effective 0.7 opacity. The chip sits inside a .vt-row label (opacity 0.85 + mauve color), so we
-           override the color to white and set 0.82 opacity (0.82 × 0.85 ≈ 0.70) to escape the label's dim. */
-        .vt-bal { font-weight: 400; font-size: 0.85rem; opacity: 0.82; color: var(--white); cursor: pointer; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+        /* Match the "you receive" estimate value (.vt-recv [data-field]): same 0.85rem, white text at
+           an effective 0.7. The label no longer composites via opacity (logos never dim), so the chip
+           carries the full 0.7 itself. */
+        .vt-bal { font-weight: 400; font-size: 0.85rem; opacity: 0.7; color: var(--white); cursor: pointer; text-transform: none; letter-spacing: 0; white-space: nowrap; }
         .vt-bal:hover { opacity: 1; text-decoration: underline; }
         /* Static balance readout (the Swap "To" side): shows the held balance of the output token
            but isn't clickable — you don't "max" an output. Kills the pointer + hover affordance. */
         .vt-bal.is-static { cursor: default; }
         .vt-bal.is-static:hover { opacity: 0.82; text-decoration: none; }
         .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
-        .vt-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; font-size: 0.85rem; opacity: 0.9; cursor: pointer; }
+        .vt-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; font-size: 0.85rem; cursor: pointer; } /* no opacity — holds a token icon */
         .vt-check input { width: auto; margin: 0; }
         /* Zap route is a key/value table with the SAME styling as the stats grid (.vt-kv): it
            inherits the panel font, tabular-nums, key/value opacity and row borders — no overrides
@@ -226,7 +223,9 @@
            no gap. Scoped to rows that hold buttons, so checkbox-only .vt-actions are unaffected. */
         .vt-actions:has(> .button):not(:has(> .button:not(:disabled))) { display: none; }
         .vt-kv { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .vt-kv span { opacity: 0.7; }
+        /* Key/label dim via text-color alpha (paper-6 @ 70%), NOT opacity — labels can embed
+           token icons (Your Stats rows) and logos never dim. */
+        .vt-kv span { color: rgba(219, 210, 219, 0.7); }
         .vt-kv strong { font-variant-numeric: tabular-nums; word-break: break-all; text-align: right; }
         /* Animated "…" for RPC-populated fields still waiting on data. Markup ships the stat
            fields with .vt-loading + empty content (so the dots animate before ANY JS runs);
