@@ -11,3 +11,13 @@
   from = "/retired"
   to = "/archive.html"
   status = 301
+# vltUSDC.html was renamed to app.html (2026-07); keep old links working.
+[[redirects]]
+  from = "/vltUSDC.html"
+  to = "/app.html"
+  status = 301
+
+[[redirects]]
+  from = "/vltUSDC"
+  to = "/app.html"
+  status = 301

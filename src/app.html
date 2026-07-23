@@ -5,7 +5,7 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="robots" content="noindex, nofollow"/>
-    <title>vltUSDC — auto-compounding VLT/USDC vault</title>
+    <title>Bankroll App — vltUSDC &amp; VLT</title>
 
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="128x128" href="img/logo/vlt-128.png">
@@ -77,6 +77,18 @@
         .vt-approval-row + .vt-approval-row { border-top: 1px solid rgba(255,255,255,0.08); }
         .vt-approval-label strong { display: block; font-size: 0.9rem; }
         .vt-approval-label span { display: block; font-size: 0.78rem; opacity: 0.6; margin-top: 2px; }
+        /* App hero: sentence-scale headline (the theme's .subpage-copy h1 is display-scale) +
+           the two opportunity cards (VLT / vltUSDC), each with a start-tab connect CTA. */
+        .subpage-copy h1.vt-hero-h1 { font-size: clamp(2.4rem, 5.5vw, 4rem); line-height: 1.06; }
+        .vt-hero-cards { display: grid; gap: 16px; margin-top: 26px; }
+        @media (min-width: 760px) { .vt-hero-cards { grid-template-columns: 1fr 1fr; } }
+        .vt-hero-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px 22px;
+            border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius); background: rgba(23, 9, 24, 0.72); }
+        .vt-hero-card-head { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: var(--white); font-weight: 800; }
+        .vt-hero-card-head .tok-ic { width: 26px; height: 26px; }
+        .vt-hero-card-head .tok-pair .tok-ic + .tok-ic { margin-left: -10px; }
+        .vt-hero-card p { margin: 0; color: var(--paper-6); font-size: 0.95rem; flex: 1; }
+        .vt-hero-card .button { margin-top: 6px; }
         /* Pre-connect stats gate — shown until a wallet connects, then #app reveals. */
         .vt-gate { padding: 36px 0 72px; }
         /* Pre-connect landing sections (#vt-landing, hidden by applyGate() once connected):
@@ -326,14 +338,22 @@
         <section class="subpage-hero" id="top">
             <div class="subpage-inner">
                 <div class="subpage-copy reveal is-visible">
-                    <p class="eyebrow">Put your USDC to work</p>
-                    <h1><span class="tok-pair tok-pair-lg"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</h1>
-                    <p class="lead">Deposit USDC and get back one token: vltUSDC. Underneath, your deposit becomes trading liquidity for VLT on Uniswap — every swap in the pool pays a fee, and the vault reinvests those fees into your position automatically. Nothing to stake, nothing to claim, nothing to manage. Withdraw whenever you like.</p>
-                    <div class="doc-actions" aria-label="Primary actions">
-                        <a class="button primary vt-connect-cta" href="javascript:void(0)">
-                            <i class="simple-icon-wallet" aria-hidden="true"></i>
-                            Connect Wallet
-                        </a>
+                    <p class="eyebrow">The Bankroll app</p>
+                    <h1 class="vt-hero-h1">Own the asset.<br>Earn the fees.</h1>
+                    <p class="lead">VLT is the fixed-supply reserve asset backed by onchain liquidity. vltUSDC puts your USDC to work in its market. Pick a side — or hold both.</p>
+                    <div class="vt-hero-cards">
+                        <div class="vt-hero-card">
+                            <div class="vt-hero-card-head"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</div>
+                            <p>The reserve asset. 1.8M fixed supply — no mint function — with roughly half the supply standing as onchain liquidity.</p>
+                            <a class="button primary vt-connect-cta" data-start-tab="swap" href="javascript:void(0)">Get Started</a>
+                        </div>
+                        <div class="vt-hero-card">
+                            <div class="vt-hero-card-head"><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</div>
+                            <p>The earning side. Deposit USDC and trading fees auto-compound into your position. Withdraw whenever you like.</p>
+                            <a class="button primary vt-connect-cta" data-start-tab="deposit" href="javascript:void(0)">Deposit</a>
+                        </div>
+                    </div>
+                    <div class="doc-actions" aria-label="Learn more">
                         <a class="button ghost" href="#how">
                             <i class="simple-icon-bulb" aria-hidden="true"></i>
                             How it works

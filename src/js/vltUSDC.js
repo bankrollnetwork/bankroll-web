@@ -2365,9 +2365,17 @@
     setInterval(function () { fetchMainnetPrices(true); }, 60000);
 
     applyGate(); // gated until connect (the #app inline display:none is the pre-JS fallback)
-    // The landing CTAs (hero + closing panel) forward to the header CONNECT button
+    // The landing CTAs (hero cards + closing panel) forward to the header CONNECT button
     // (same connect flow; the click is a user gesture so the wallet prompt still opens).
+    // data-start-tab pre-activates a tab — the tab controls work while #app is hidden and
+    // persist via activate() — so each hero card lands the user on its product post-connect.
     $(".vt-connect-cta").on("click", function () {
+      var start = this.getAttribute("data-start-tab");
+      if (start) {
+        var t = document.querySelector('.vt-subtab[data-tab="' + start + '"]') ||
+                document.querySelector('.vt-tab[data-group="' + start + '"]');
+        if (t) t.click();
+      }
       var b = document.getElementById("connect-wallet");
       if (b) b.click();
     });

@@ -24,6 +24,16 @@
       "source" : "/retired",
       "destination" : "/archive.html",
       "type" : 301
+    },
+    {
+      "source" : "/vltUSDC.html",
+      "destination" : "/app.html",
+      "type" : 301
+    },
+    {
+      "source" : "/vltUSDC",
+      "destination" : "/app.html",
+      "type" : 301
     }
     ]
 
