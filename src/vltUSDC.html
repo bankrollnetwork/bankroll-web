@@ -537,7 +537,8 @@
                     <span class="vt-tab-actions"><button type="button" id="wallet-open" class="vt-refresh" title="Wallet" aria-label="Wallet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></button><button type="button" id="settings-open" class="vt-refresh" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button type="button" id="refresh-all" class="vt-refresh" title="Refresh" aria-label="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button></span>
                 </nav>
                 <nav class="vt-subtabs" id="vt-subtabs-stats" hidden aria-label="Stats views">
-                    <button type="button" class="vt-subtab" data-tab="stats">Global</button>
+                    <button type="button" class="vt-subtab" data-tab="stats">vltUSDC</button>
+                    <button type="button" class="vt-subtab" data-tab="vlt">VLT</button>
                     <button type="button" class="vt-subtab" data-tab="your-stats">Yours</button>
                 </nav>
                 <nav class="vt-subtabs" id="vt-subtabs-vault" hidden aria-label="Vault actions">
@@ -547,6 +548,7 @@
                 </nav>
                 <div class="vt-tab-content">
                     <div class="vt-tab-pane" id="pane-stats"></div>
+                    <div class="vt-tab-pane" id="pane-vlt"></div>
                     <div class="vt-tab-pane" id="pane-your-stats"></div>
                     <div class="vt-tab-pane" id="pane-deposit"></div>
                     <div class="vt-tab-pane" id="pane-withdraw"></div>
@@ -604,6 +606,28 @@
                             <div class="vt-kv"><span>VLT price</span><strong data-field="vs-vlt-price" class="vt-loading"></strong></div>
                         </div>
                         <p class="calc-note">L per share is liquidity-denominated, not USD.</p>
+                    </div>
+
+                    <!-- Global VLT stats (Stats → VLT sub-tab): the reserve asset's market and
+                         liquidity picture. Populated by refreshVltStats() on the dashboard cadence. -->
+                    <div class="calculator-panel reveal is-visible" id="vlt-stats">
+                        <div class="panel-heading">
+                            <i class="simple-icon-diamond" aria-hidden="true"></i>
+                            <div><h2>VLT</h2><p>The reserve asset — price, market cap and onchain liquidity</p></div>
+                        </div>
+                        <div class="result-grid vt-cards">
+                            <div class="vt-kv"><span>VLT price</span><strong data-field="g-vlt-spot" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>market cap</span><strong data-field="g-vlt-mcap" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>supply</span><strong>1,800,000 <img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</strong><small class="sc-sub">fixed — no mint function</small></div>
+                            <div class="vt-kv"><span>onchain liquidity</span><strong data-field="g-vlt-liq" class="vt-loading"></strong><small class="sc-sub" data-field="g-vlt-liq-parts"></small></div>
+                            <div class="vt-kv"><span>supply in liquidity</span><strong data-field="g-vlt-liq-pct" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>working in vltUSDC</span><strong data-field="g-vlt-vault-pct" class="vt-loading"></strong><small class="sc-sub" data-field="g-vlt-vault-amt"></small></div>
+                            <div class="vt-kv"><span>V2 venue price</span><strong data-field="g-vlt-v2" class="vt-loading"></strong><small class="sc-sub" data-field="g-vlt-spread"></small></div>
+                            <div class="vt-kv"><span>VLT / ETH</span><strong data-field="g-vlt-eth" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>contract</span><strong>0x6b78…4d11<button type="button" class="vt-wallet-act" data-act="copy" data-addr="0x6b785a0322126826d8226d77e173d75DAfb84d11" title="Copy VLT contract address" aria-label="Copy VLT contract address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" href="https://etherscan.io/token/0x6b785a0322126826d8226d77e173d75dafb84d11" target="_blank" rel="noopener" title="View VLT on Etherscan" aria-label="View VLT on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></strong></div>
+                            <div class="vt-kv"><span>live since</span><strong>2020 · Ethereum</strong></div>
+                        </div>
+                        <p class="calc-note">V2 venue price from the WETH/VLT pair at the live ETH spot; spread is vs the V4 pool.</p>
                     </div>
 
                     <!-- Swap (ETH / USDC / VLT) — user's wallet → Universal Router directly; no ZapHelper.

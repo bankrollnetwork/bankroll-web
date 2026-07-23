@@ -376,13 +376,16 @@
           var posUsd = Number(formatUnits(String(pUsdcRaw), state.tokens.usdcDec)) +
             Number(formatUnits(String(pVltRaw), state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
           state.navPerShareUsdc = posUsd / Number(supply);
+          // Stash the position's composition for the global VLT stats (venue depth / supply shares).
+          state._poolVlt = String(pVltRaw); state._poolUsdc = String(pUsdcRaw); state._poolUsd = posUsd;
           // Pool = the position's underlying token amounts; TVL = its USD value (principal, at live price).
           setFieldHtml("vs-pool", localize(formatUnits(String(pVltRaw), state.tokens.vltDec, 2)) + " " + tokHtml("VLT") + " | " +
             localize(formatUnits(String(pUsdcRaw), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC"));
           setField("vs-tvl", "$" + localize(posUsd.toFixed(2)));
-        } else { state.navPerShareUsdc = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
-      } catch (e) { state.navPerShareUsdc = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
+        } else { state.navPerShareUsdc = 0; state._poolVlt = state._poolUsdc = null; state._poolUsd = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
+      } catch (e) { state.navPerShareUsdc = 0; state._poolVlt = state._poolUsdc = null; state._poolUsd = 0; setField("vs-pool", "—"); setField("vs-tvl", "—"); }
       await refreshClaimable(); // claimable value + auto-compound trigger for the Stats panel
+      await refreshVltStats();  // global VLT stats (Stats → VLT sub-tab); reuses the reads above
     } catch (e) {
       console.error("[vault-test] dashboard read error:", e); // full object/stack in console
       logEntry("dashboard read failed: " + errText(e), "err");
@@ -484,6 +487,62 @@
         ex.style.display = (addr && onMainnet) ? "" : "none";
       }
     });
+  }
+
+  // ── global VLT stats (Stats → VLT sub-tab) ─────────────────────────────────
+  // The reserve asset's market/liquidity picture. Costs ONE V2-reserves read per refresh
+  // (sequential, piggybacking the 60s dashboard cadence) plus two one-time cached reads
+  // (pair token0, VLT totalSupply); everything else reuses numbers the dashboard already
+  // computed. renderVltStats() is pure math/DOM — re-run when live prices land too.
+  var TOTALSUPPLY_ABI = [{ name: "totalSupply", inputs: [], outputs: [{ type: "uint256", name: "" }], stateMutability: "view", type: "function" }];
+  async function refreshVltStats() {
+    try {
+      var pair = new state.readWeb3.eth.Contract(V2PAIR_ABI, V2_WETH_VLT_PAIR);
+      if (!state._v2Token0) state._v2Token0 = String(await pair.methods.token0().call()); // cached
+      var r = await pair.methods.getReserves().call();
+      var r0 = String(r.reserve0 || r[0]), r1 = String(r.reserve1 || r[1]);
+      var vltIs0 = state._v2Token0.toLowerCase() === (state.tokens.vlt || VLT_ADDR).toLowerCase();
+      state._v2VltRaw = vltIs0 ? r0 : r1;
+      state._v2WethRaw = vltIs0 ? r1 : r0;
+    } catch (e) { state._v2VltRaw = state._v2WethRaw = null; }
+    if (state._vltSupplyRaw == null) { // fixed supply — read once, cache for the session
+      try {
+        var t = new state.readWeb3.eth.Contract(TOTALSUPPLY_ABI, state.tokens.vlt || VLT_ADDR);
+        state._vltSupplyRaw = String(await t.methods.totalSupply().call());
+      } catch (e) { state._vltSupplyRaw = null; }
+    }
+    renderVltStats();
+  }
+  function renderVltStats() {
+    var spot = state.priceUsdcPerVlt || 0;
+    var vltDec = state.tokens.vltDec || 18;
+    setField("g-vlt-spot", spot ? fmtSpot(spot) : "—");
+    var supply = state._vltSupplyRaw != null ? Number(formatUnits(state._vltSupplyRaw, vltDec)) : 1800000;
+    setField("g-vlt-mcap", spot ? "$" + localize((supply * spot).toFixed(0)) : "—");
+    // Venue depths: V4 = the vault position (effectively the pool); V2 = the WETH/VLT pair.
+    var poolVlt = state._poolVlt != null ? Number(formatUnits(state._poolVlt, vltDec)) : null;
+    var v4Usd = state._poolUsd || 0;
+    var v2Vlt = state._v2VltRaw != null ? Number(formatUnits(state._v2VltRaw, vltDec)) : null;
+    var v2Weth = state._v2WethRaw != null ? Number(formatUnits(state._v2WethRaw, 18)) : null;
+    var eth = state.ethUsd || 0;
+    var v2Usd = (v2Vlt != null && spot && eth) ? v2Vlt * spot + v2Weth * eth : null;
+    if (v4Usd || v2Usd != null) {
+      setField("g-vlt-liq", "$" + localize(((v4Usd || 0) + (v2Usd || 0)).toFixed(0)));
+      setField("g-vlt-liq-parts", "V4 $" + localize((v4Usd || 0).toFixed(0)) + " | V2 " + (v2Usd != null ? "$" + localize(v2Usd.toFixed(0)) : "—"));
+    } else { setField("g-vlt-liq", "—"); setField("g-vlt-liq-parts", ""); }
+    // Supply shares — the Proof-of-Liquidity numbers.
+    var liqVlt = (poolVlt || 0) + (v2Vlt || 0);
+    setField("g-vlt-liq-pct", (poolVlt != null || v2Vlt != null) && supply ? (liqVlt / supply * 100).toFixed(2) + "%" : "—");
+    setField("g-vlt-vault-pct", (poolVlt != null && supply) ? (poolVlt / supply * 100).toFixed(2) + "%" : "—");
+    setFieldHtml("g-vlt-vault-amt", poolVlt != null ? localize(poolVlt.toFixed(0)) + " " + tokHtml("VLT") : "");
+    // V2 venue price (WETH/VLT at live ETH spot) + spread vs V4; VLT in ETH terms.
+    var ethPerVlt = (v2Vlt && v2Weth) ? v2Weth / v2Vlt : null;
+    if (ethPerVlt != null && eth) {
+      var v2Price = ethPerVlt * eth;
+      setField("g-vlt-v2", fmtSpot(v2Price));
+      setField("g-vlt-spread", spot ? ((v2Price - spot) / spot * 100).toFixed(2) + "% vs V4" : "");
+    } else { setField("g-vlt-v2", "—"); setField("g-vlt-spread", ""); }
+    setField("g-vlt-eth", ethPerVlt != null ? Number(ethPerVlt.toPrecision(3)) + " ETH" : "—");
   }
 
   // ── swapData builder (mirrors scripts/dev/build_vlt_route.js) ───────────────
@@ -1780,6 +1839,7 @@
       msgs.push("ETH $" + state.ethUsd + " (" + eth.src + ")");
     } else { msgs.push("ETH fetch failed — kept previous"); }
     renderBalanceUsd(); // ETH ≈$ now that a live price landed (also refreshes VLT/shares ≈$)
+    renderVltStats();   // V2 venue price / liquidity USD depend on the live ETH spot
     if (!quiet) logEntry("mainnet prices: " + msgs.join(" · "), "ok");
   }
 
@@ -1897,7 +1957,7 @@
   var TAB_KEY = "vaultTestTab";          // last active LEAF (pre-nesting saved values still map)
   var TAB_SUBS_KEY = "vaultTestSubTabs"; // per-group last-used leaf (JSON), so groups remember
   var TAB_GROUPS = {
-    stats: ["stats", "your-stats"],
+    stats: ["stats", "vlt", "your-stats"],
     swap: ["swap"],
     vault: ["deposit", "withdraw", "advanced"],
     config: ["config"],
@@ -1911,6 +1971,7 @@
   function setupTabs() {
     var groups = {
       "pane-stats": ["vault-stats"],
+      "pane-vlt": ["vlt-stats"],
       "pane-your-stats": ["your-stats"],
       "pane-deposit": ["zap-go"],
       "pane-withdraw": ["red-go"],
