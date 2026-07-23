@@ -578,6 +578,7 @@
                 <nav class="vt-subtabs" id="vt-subtabs-vault" hidden aria-label="Vault actions">
                     <button type="button" class="vt-subtab" data-tab="deposit">Deposit</button>
                     <button type="button" class="vt-subtab" data-tab="withdraw">Withdraw</button>
+                    <button type="button" class="vt-subtab" data-tab="donate">Donate</button>
                     <button type="button" class="vt-subtab" data-tab="advanced">Advanced</button>
                 </nav>
                 <div class="vt-tab-content">
@@ -586,6 +587,7 @@
                     <div class="vt-tab-pane" id="pane-your-stats"></div>
                     <div class="vt-tab-pane" id="pane-deposit"></div>
                     <div class="vt-tab-pane" id="pane-withdraw"></div>
+                    <div class="vt-tab-pane" id="pane-donate"></div>
                     <div class="vt-tab-pane" id="pane-swap"></div>
                     <div class="vt-tab-pane" id="pane-advanced"></div>
                     <div class="vt-tab-pane" id="pane-config"></div>
@@ -827,6 +829,25 @@
                         </div>
                         <div class="vt-route" data-field="zap-route" style="margin-top:18px;"><div class="vt-route-note">Enter a USDC amount to see the route.</div></div>
                         <p class="calc-note" data-field="zap-note">&nbsp;</p>
+                    </div>
+
+                    <!-- zapDonate: USDC-only gift to ALL holders — the ZapHelper buys the VLT half on
+                         the open market, then vault.donate() adds the pair as liquidity and mints NO
+                         shares, so L/share rises for everyone. Reuses the Deposit zap's USDC allowance. -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-heart" aria-hidden="true"></i>
+                            <div><h2>Donate</h2><p>Gift USDC to every vltUSDC holder — added to the pool as liquidity via the zap; no shares minted</p></div>
+                        </div>
+                        <div class="vt-row">
+                            <label for="don-usdc"><span class="vt-lab"><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span> <span class="vt-bal" data-token="usdc" data-target="don-usdc" title="click to use full balance">…</span></label>
+                            <input id="don-usdc" type="text" value="" placeholder="0.0" inputmode="decimal">
+                        </div>
+                        <div class="vt-actions">
+                            <button class="button primary" id="don-go" type="button" disabled>Donate</button>
+                            <button class="button ghost" id="don-approve-usdc-p" type="button" disabled>Approve USDC</button>
+                        </div>
+                        <p class="calc-note" data-field="don-note">Donations compound for existing holders: liquidity rises, supply doesn't.</p>
                     </div>
 
                     <!-- Withdraw (vault.redeem) -->

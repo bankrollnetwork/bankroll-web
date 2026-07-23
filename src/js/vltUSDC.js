@@ -1430,7 +1430,7 @@
   var APPROVALS = [
     { btn: "#dep-approve-vlt",  pbtn: "#dep-approve-vlt-p",  sym: "VLT",  target: "vault", on: false, token: function () { return state.write.vlt; },  spender: function () { return state.cfg.vault; } },
     { btn: "#dep-approve-usdc", pbtn: "#dep-approve-usdc-p", sym: "USDC", target: "vault", on: false, token: function () { return state.write.usdc; }, spender: function () { return state.cfg.vault; } },
-    { btn: "#zap-approve-usdc", pbtn: "#zap-approve-usdc-p", sym: "USDC", target: "ZapHelper", on: false, token: function () { return state.write.zap && state.write.usdc; }, spender: function () { return state.cfg.zap; } },
+    { btn: "#zap-approve-usdc", pbtn: "#zap-approve-usdc-p, #don-approve-usdc-p", sym: "USDC", target: "ZapHelper", on: false, token: function () { return state.write.zap && state.write.usdc; }, spender: function () { return state.cfg.zap; } },
   ];
   function isApproved(raw) { return web3.utils.toBN(raw).gt(web3.utils.toBN("0")); }
   async function renderApproval(a) {
@@ -1472,6 +1472,7 @@
     gateAction("#dep-go", depOk);
     gateAction("#zap-go", zapOk);
     gateAction("#fund-vlt-go", zapOk);              // "Get VLT" spends USDC through the ZapHelper
+    gateAction("#don-go", zapOk);                   // Donate zaps USDC through the same allowance
     refreshZapQuoteDebounced();                      // re-quote mins now that allowance may have changed
     depositPreview();                                // exact minShares now that the static call can run
   }
@@ -1590,6 +1591,29 @@
         state.write.zap.methods.zapDeposit(totalRaw, swapRaw, minVlt, minShares, await txDeadline(), state.account, swapData).send({ from: state.account }));
     } catch (e) { note("zap-note", errText(e), "vt-warn"); }
   }
+  // USDC-only donation to ALL holders via ZapHelper.zapDonate: same balanced split as the
+  // deposit zap buys the VLT half on the open market, then vault.donate() adds the pair as
+  // liquidity MINTING NO SHARES — L/share rises for every holder. Shares the deposit zap's
+  // USDC → ZapHelper allowance. Route calldata is built at send time; the min bound is the
+  // price-implied output less the route fee and the user's slippage tolerance.
+  async function doZapDonate() {
+    try {
+      requireConnected();
+      if (!state.write.zap) throw new Error("set the ZapHelper address in Config");
+      var totalRaw = parseUnits($("#don-usdc").val(), state.tokens.usdcDec);
+      if (toBN(totalRaw).lten(0)) throw new Error("enter an amount");
+      var swapRaw = quoteDepositSwap(totalRaw);
+      if (toBN(swapRaw).lten(0) || toBN(swapRaw).gte(toBN(totalRaw))) throw new Error("amount too small to split");
+      var price = state.priceUsdcPerVlt;
+      if (!(price > 0)) throw new Error("pool price unavailable — try again shortly");
+      var swapData = (await getZapSwapData(swapRaw)).data;
+      var expVlt = Number(formatUnits(swapRaw, state.tokens.usdcDec)) / price * (1 - ROUTE_FEE_BPS / 1e6);
+      var minVlt = parseUnits((expVlt * (1 - state.slippageBps / 10000)).toFixed(8), state.tokens.vltDec);
+      await runTx("donate " + $("#don-usdc").val() + " USDC to holders",
+        state.write.zap.methods.zapDonate(totalRaw, swapRaw, minVlt, await txDeadline(), state.account, swapData).send({ from: state.account }));
+    } catch (e) { note("don-note", errText(e), "vt-warn"); }
+  }
+
   var _redTimer;
   function redeemPreviewDebounced() { clearTimeout(_redTimer); _redTimer = setTimeout(redeemPreview, 350); }
   // Redeem amount slider (% of share balance) + live "X%" readout (the $ value lives on the
@@ -1958,7 +1982,7 @@
   var TAB_GROUPS = {
     stats: ["vlt", "stats", "your-stats"],
     swap: ["swap"],
-    vault: ["deposit", "withdraw", "advanced"],
+    vault: ["deposit", "withdraw", "donate", "advanced"],
     config: ["config"],
   };
   var activeLeaf = null;  // current leaf (the apply* helpers' don't-strand checks read this)
@@ -1974,6 +1998,7 @@
       "pane-your-stats": ["your-stats"],
       "pane-deposit": ["zap-go"],
       "pane-withdraw": ["red-go"],
+      "pane-donate": ["don-go"],
       "pane-swap": ["swap-panel"],
       "pane-advanced": ["dep-go"],
       "pane-config": ["cfg-save", "fund-eth-go"],
@@ -2346,8 +2371,9 @@
     $("#dep-approve-vlt, #dep-approve-vlt-p").on("click", txGuard("VLT approval for the vault", function () { return toggleApproval(APPROVALS[0]); }));
     $("#dep-approve-usdc, #dep-approve-usdc-p").on("click", txGuard("USDC approval for the vault", function () { return toggleApproval(APPROVALS[1]); }));
     $("#dep-go").on("click", txGuard("Direct deposit", doDeposit));
-    $("#zap-approve-usdc, #zap-approve-usdc-p").on("click", txGuard("USDC approval for deposits", function () { return toggleApproval(APPROVALS[2]); }));
+    $("#zap-approve-usdc, #zap-approve-usdc-p, #don-approve-usdc-p").on("click", txGuard("USDC approval for deposits", function () { return toggleApproval(APPROVALS[2]); }));
     $("#zap-go").on("click", txGuard("Deposit", doZapDeposit));
+    $("#don-go").on("click", txGuard("Donate", doZapDonate));
     $("#red-go").on("click", txGuard("Withdraw", doRedeem));
     $("#cfg-routing-api").on("change", function () {
       state.useRoutingApi = this.checked;
