@@ -6,36 +6,48 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [ {
-      "source": "/*",
-      "destination": "/*.html"
-    } ],
-    "redirects": [ {
-      "source" : "/firebase/*",
-      "destination" : "https://www.firebase.com",
-      "type" : 302
-    },
-    {
-      "source" : "/retired.html",
-      "destination" : "/archive.html",
-      "type" : 301
-    },
-    {
-      "source" : "/retired",
-      "destination" : "/archive.html",
-      "type" : 301
-    },
-    {
-      "source" : "/vltUSDC.html",
-      "destination" : "/app.html",
-      "type" : 301
-    },
-    {
-      "source" : "/vltUSDC",
-      "destination" : "/app.html",
-      "type" : 301
-    }
+    "rewrites": [
+      {
+        "source": "/*",
+        "destination": "/*.html"
+      }
+    ],
+    "redirects": [
+      {
+        "source": "/firebase/*",
+        "destination": "https://www.firebase.com",
+        "type": 302
+      },
+      {
+        "source": "/retired.html",
+        "destination": "/archive.html",
+        "type": 301
+      },
+      {
+        "source": "/retired",
+        "destination": "/archive.html",
+        "type": 301
+      },
+      {
+        "source": "/vltUSDC.html",
+        "destination": "/app.html",
+        "type": 301
+      },
+      {
+        "source": "/vltUSDC",
+        "destination": "/app.html",
+        "type": 301
+      },
+      {
+        "source": "/vltusdc.html",
+        "destination": "/app.html",
+        "type": 301
+      },
+      {
+        "source": "/vltusdc",
+        "destination": "/app.html",
+        "type": 301
+      }
     ]
-
   }
 }

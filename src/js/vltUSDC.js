@@ -1069,6 +1069,7 @@
     if (target === "dep-vlt") onDepInput("vlt", true);
     else if (target === "dep-usdc") onDepInput("usdc", true);
     else if (target === "zap-usdc") onZapTotal(true);
+    else if (target === "don-usdc") syncDonSliderFromUsdc();
     else if (target === "red-shares") { syncRedeemSliderFromShares(); redeemPreview(); }
   }
 
@@ -1612,6 +1613,23 @@
       await runTx("donate " + $("#don-usdc").val() + " USDC to holders",
         state.write.zap.methods.zapDonate(totalRaw, swapRaw, minVlt, await txDeadline(), state.account, swapData).send({ from: state.account }));
     } catch (e) { note("don-note", errText(e), "vt-warn"); }
+  }
+
+  // Donate amount slider (% of USDC balance) + "X%" readout — mirrors the deposit zap slider.
+  function renderDonReadout() {
+    paintRange(document.getElementById("don-slider"));
+    setField("don-pct", ($("#don-slider").val() || "0") + "%");
+  }
+  function onDonSlider() {
+    var pct = parseInt($("#don-slider").val(), 10) || 0;
+    $("#don-usdc").val(formatUnits(toBN(state.bal.usdc || "0").muln(pct).divn(100).toString(), state.tokens.usdcDec, state.tokens.usdcDec));
+    renderDonReadout();
+  }
+  function syncDonSliderFromUsdc() {
+    var bal = toBN(state.bal.usdc || "0");
+    var u; try { u = toBN(parseUnits($("#don-usdc").val(), state.tokens.usdcDec)); } catch (e) { u = toBN("0"); }
+    $("#don-slider").val(bal.gtn(0) ? Math.min(100, Number(u.muln(100).div(bal).toString())) : 0);
+    renderDonReadout();
   }
 
   var _redTimer;
@@ -2374,6 +2392,8 @@
     $("#zap-approve-usdc, #zap-approve-usdc-p, #don-approve-usdc-p").on("click", txGuard("USDC approval for deposits", function () { return toggleApproval(APPROVALS[2]); }));
     $("#zap-go").on("click", txGuard("Deposit", doZapDeposit));
     $("#don-go").on("click", txGuard("Donate", doZapDonate));
+    $("#don-usdc").on("input", syncDonSliderFromUsdc);
+    $("#don-slider").on("input", onDonSlider);
     $("#red-go").on("click", txGuard("Withdraw", doRedeem));
     $("#cfg-routing-api").on("change", function () {
       state.useRoutingApi = this.checked;

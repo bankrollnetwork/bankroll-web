@@ -841,6 +841,10 @@
                         </div>
                         <div class="vt-row">
                             <label for="don-usdc"><span class="vt-lab"><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC</span> <span class="vt-bal" data-token="usdc" data-target="don-usdc" title="click to use full balance">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="don-slider" min="0" max="100" step="1" value="0" title="donate % of your USDC balance">
+                                <span class="vt-hint" data-field="don-pct" style="white-space:nowrap">0%</span>
+                            </div>
                             <input id="don-usdc" type="text" value="" placeholder="0.0" inputmode="decimal">
                         </div>
                         <div class="vt-actions">
