@@ -235,7 +235,12 @@
     var m = (e && e.message) ? e.message : String(e);
     // surface revert reason if present
     var i = m.indexOf("execution reverted");
-    return i >= 0 ? m.slice(i) : m;
+    if (i >= 0) m = m.slice(i);
+    // web3 1.10 appends the raw JSON-RPC payload ({"originalError":{…"data":"0x08c379a0…"}})
+    // after the human message — a wall of hex in a panel note. Keep the sentence, drop the blob.
+    var brace = m.indexOf(" {");
+    if (brace > 0) m = m.slice(0, brace);
+    return m.trim();
   }
 
   // raw JSON-RPC to the HTTP node (for hardhat_* cheats + read fallbacks).
@@ -1216,6 +1221,16 @@
       return;
     }
 
+    // Never fire a doomed static call: the quote SIMULATES the real transferFrom, so an amount
+    // above the wallet's USDC balance reverts with a raw "ERC20: transfer amount exceeds
+    // balance" blob in the note. Say it plainly instead. Most often seen right after a max
+    // deposit — the input keeps the (now spent) amount while the balance drops to ~0.
+    if (state.account && toBN(totalRaw).gt(toBN(state.bal.usdc || "0"))) {
+      $("#zap-minvlt").val("0"); $("#zap-minshares").val("0");
+      setRoute(baseRows(routeStr), "amount exceeds your USDC balance (" + fmtU(state.bal.usdc || "0") + " available)", true);
+      zapPreview();
+      return;
+    }
     // The exact minimums need the USDC→ZapHelper allowance (the static-call performs the transferFrom).
     if (!state.account || !state.write.zap || !(APPROVALS[2] && APPROVALS[2].on)) {
       $("#zap-minvlt").val("0"); $("#zap-minshares").val("0");
@@ -1590,6 +1605,10 @@
       // No auto-approve — approve USDC to the ZapHelper via the Approve button first.
       await runTx("zapDeposit(" + $("#zap-usdc").val() + " USDC, swap " + $("#zap-swap").val() + ")",
         state.write.zap.methods.zapDeposit(totalRaw, swapRaw, minVlt, minShares, await txDeadline(), state.account, swapData).send({ from: state.account }));
+      // Spent — clear the box so it can't re-quote the old amount against the drained balance
+      // (and so the panel returns to its neutral "enter an amount" state, like a fresh load).
+      $("#zap-usdc").val("");
+      onZapTotal(false);
     } catch (e) { note("zap-note", errText(e), "vt-warn"); }
   }
   // USDC-only donation to ALL holders via ZapHelper.zapDonate: same balanced split as the
@@ -1612,6 +1631,8 @@
       var minVlt = parseUnits((expVlt * (1 - state.slippageBps / 10000)).toFixed(8), state.tokens.vltDec);
       await runTx("donate " + $("#don-usdc").val() + " USDC to holders",
         state.write.zap.methods.zapDonate(totalRaw, swapRaw, minVlt, await txDeadline(), state.account, swapData).send({ from: state.account }));
+      $("#don-usdc").val(""); // spent — same reset as the deposit zap
+      syncDonSliderFromUsdc();
     } catch (e) { note("don-note", errText(e), "vt-warn"); }
   }
 
