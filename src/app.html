@@ -238,12 +238,12 @@
         .vt-slip-row input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: linear-gradient(to right, rgba(255,255,255,0.04) var(--fill,0%), rgba(255,255,255,0.18) var(--fill,0%)); }
         .vt-slip-row input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.18); }
         .vt-slip-row input[type=range]::-moz-range-progress { height: 6px; border-radius: 6px; background: rgba(255,255,255,0.04); }
-        /* Thumb matches the checked checkbox: solid white, same visual weight (20px content +
-           2px border ≈ the checkbox's 22px), so both controls read as one family and stay a
-           real touch target. margin-top centers it on the 6px track — the thumb pseudo-element
-           is content-box (the theme's `*` border-box rule doesn't reach it): (6 − 22) / 2. */
-        .vt-slip-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--white); border: 1px solid var(--white); margin-top: -8px; box-shadow: var(--shadow); }
-        .vt-slip-row input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--white); border: 1px solid var(--white); box-shadow: var(--shadow); }
+        /* Card-dark thumb with a light rim (the original look), kept at the larger touch size:
+           20px content + 2px border ≈ the checkbox's 22px. margin-top centers it on the 6px
+           track — the thumb pseudo-element is content-box (the theme's `*` border-box rule
+           doesn't reach it): (6 − 22) / 2. */
+        .vt-slip-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--paper-2); border: 1px solid rgba(255,255,255,0.3); margin-top: -8px; box-shadow: var(--shadow); }
+        .vt-slip-row input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--paper-2); border: 1px solid rgba(255,255,255,0.3); box-shadow: var(--shadow); }
         .vt-slip-row .vt-slip-num { width: 96px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); color: inherit; font: inherit; }
         .vt-slip-presets { display: flex; gap: 8px; margin-top: 14px; }
         /* Lay a panel's inputs out in responsive columns (full-row panel, columnar fields). */
