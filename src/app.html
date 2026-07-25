@@ -87,8 +87,7 @@
         .vt-hero-card-head { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: var(--white); font-weight: 800; }
         .vt-hero-card-head .tok-ic { width: 26px; height: 26px; }
         .vt-hero-card-head .tok-pair .tok-ic + .tok-ic { margin-left: -10px; }
-        .vt-hero-card p { margin: 0; color: var(--paper-6); font-size: 0.95rem; flex: 1; }
-        .vt-hero-card .button { margin-top: 6px; }
+        .vt-hero-card p { margin: 0; color: var(--paper-6); font-size: 0.95rem; }
         /* Pre-connect stats gate — shown until a wallet connects, then #app reveals. Title + a
            VLT|vltUSDC switcher styled like the sub-tab row but with its OWN classes so
            setupTabs()'s .vt-subtab wiring never touches it. */
@@ -353,16 +352,18 @@
                         <div class="vt-hero-card">
                             <div class="vt-hero-card-head"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""> VLT</div>
                             <p>The reserve asset. 1.8M fixed supply — no mint function — with roughly half the supply standing as onchain liquidity.</p>
-                            <a class="button primary vt-connect-cta" data-start-tab="swap" href="javascript:void(0)">Get Started</a>
                         </div>
                         <div class="vt-hero-card">
                             <div class="vt-hero-card-head"><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</div>
                             <p>The earning side. Deposit USDC and trading fees auto-compound into your position. Withdraw whenever you like.</p>
-                            <a class="button primary vt-connect-cta" data-start-tab="deposit" href="javascript:void(0)">Deposit</a>
                         </div>
                     </div>
-                    <div class="doc-actions" aria-label="Learn more">
-                        <a class="button ghost" href="#how">
+                    <div class="doc-actions" aria-label="Primary actions">
+                        <a class="button primary vt-connect-cta" href="javascript:void(0)">
+                            <i class="simple-icon-wallet" aria-hidden="true"></i>
+                            Connect Wallet
+                        </a>
+                        <a class="button ghost small" href="#how">
                             <i class="simple-icon-bulb" aria-hidden="true"></i>
                             How it works
                         </a>
