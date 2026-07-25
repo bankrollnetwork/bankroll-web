@@ -48,6 +48,9 @@
         /* Inline ⓘ on a checkbox row: anchor the popover to the ROW (full panel width) and open
            it LEFT-aligned — right-anchoring off a mid-row icon would push it off-screen on mobile. */
         .vt-check-row { position: relative; align-items: center; gap: 0; }
+        /* The ⓘ trails the label text — undo the panel-heading rule's margin-left:auto, which
+           would otherwise shove it to the row's far edge, away from what it explains. */
+        .vt-check-row .vt-info-btn { margin-left: 2px; align-self: center; }
         .vt-check-row .vt-info-pop { left: 0; right: auto; }
         /* Nested sub-tab row (second level under the main tabs): mirrors the settings-modal
            tab look. Only the active group's row is shown; groups without one (Swap, Config)
