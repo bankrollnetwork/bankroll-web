@@ -2127,14 +2127,17 @@
       pop.appendChild(p); // the subtitle IS the info content — moved, not duplicated
       heads[i].appendChild(btn);
       heads[i].appendChild(pop);
-      btn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        var mine = this.parentNode.querySelector(".vt-info-pop");
-        var wasOpen = !mine.hidden;
-        closeInfoPops();
-        if (!wasOpen) { mine.hidden = false; this.setAttribute("aria-expanded", "true"); }
-      });
     }
+    // Delegated so hand-authored ⓘ buttons (e.g. the Withdraw USDC-only row) work identically
+    // to the generated panel ones: the popover is the next .vt-info-pop under the same parent.
+    $(document).on("click", ".vt-info-btn", function (e) {
+      e.stopPropagation();
+      var mine = this.parentNode.querySelector(".vt-info-pop");
+      if (!mine) return;
+      var wasOpen = !mine.hidden;
+      closeInfoPops();
+      if (!wasOpen) { mine.hidden = false; this.setAttribute("aria-expanded", "true"); }
+    });
     $(document).on("click", closeInfoPops);
     $(document).on("keydown", function (e) { if (e.key === "Escape") closeInfoPops(); });
   }

@@ -45,6 +45,10 @@
             background: var(--paper-2); box-shadow: var(--shadow); font-size: 0.9rem; }
         .vt-info-pop[hidden] { display: none; }
         .vt-info-pop p { margin: 0; color: var(--paper-6); }
+        /* Inline ⓘ on a checkbox row: anchor the popover to the ROW (full panel width) and open
+           it LEFT-aligned — right-anchoring off a mid-row icon would push it off-screen on mobile. */
+        .vt-check-row { position: relative; align-items: center; gap: 0; }
+        .vt-check-row .vt-info-pop { left: 0; right: auto; }
         /* Nested sub-tab row (second level under the main tabs): mirrors the settings-modal
            tab look. Only the active group's row is shown; groups without one (Swap, Config)
            show none. [hidden] must outrank the flex display. */
@@ -234,8 +238,12 @@
         .vt-slip-row input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: linear-gradient(to right, rgba(255,255,255,0.04) var(--fill,0%), rgba(255,255,255,0.18) var(--fill,0%)); }
         .vt-slip-row input[type=range]::-moz-range-track { height: 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.18); }
         .vt-slip-row input[type=range]::-moz-range-progress { height: 6px; border-radius: 6px; background: rgba(255,255,255,0.04); }
-        .vt-slip-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--paper-2); border: 1px solid rgba(255,255,255,0.3); margin-top: -6px; box-shadow: var(--shadow); }
-        .vt-slip-row input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--paper-2); border: 1px solid rgba(255,255,255,0.3); box-shadow: var(--shadow); }
+        /* Thumb matches the checked checkbox: solid white, same visual weight (20px content +
+           2px border ≈ the checkbox's 22px), so both controls read as one family and stay a
+           real touch target. margin-top centers it on the 6px track — the thumb pseudo-element
+           is content-box (the theme's `*` border-box rule doesn't reach it): (6 − 22) / 2. */
+        .vt-slip-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--white); border: 1px solid var(--white); margin-top: -8px; box-shadow: var(--shadow); }
+        .vt-slip-row input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--white); border: 1px solid var(--white); box-shadow: var(--shadow); }
         .vt-slip-row .vt-slip-num { width: 96px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); color: inherit; font: inherit; }
         .vt-slip-presets { display: flex; gap: 8px; margin-top: 14px; }
         /* Lay a panel's inputs out in responsive columns (full-row panel, columnar fields). */
@@ -886,8 +894,12 @@
                             <input id="red-shares" type="text" value="0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="red-out"></span></div>
                         </div>
-                        <div class="vt-actions" style="margin-top:0; margin-bottom:4px;">
-                            <label class="vt-check"><input type="checkbox" id="red-usdc-only"> Receive <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC only <span class="vt-hint">(sells the VLT half via Uniswap — one signature + one transaction; route slippage applies)</span></label>
+                        <div class="vt-actions vt-check-row" style="margin-top:0; margin-bottom:4px;">
+                            <label class="vt-check"><input type="checkbox" id="red-usdc-only"> Receive <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC only</label>
+                            <!-- The detail lives behind the same ⓘ affordance the panels use. The button sits
+                                 OUTSIDE the label — inside it, clicking the icon would toggle the checkbox. -->
+                            <button type="button" class="vt-info-btn" title="About this option" aria-label="About this option" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+                            <div class="vt-info-pop" hidden><p>Sells the VLT half via Uniswap — one signature and one transaction; route slippage applies.</p></div>
                         </div>
                         <div class="vt-actions">
                             <button class="button primary" id="red-go" type="button">Withdraw</button>
