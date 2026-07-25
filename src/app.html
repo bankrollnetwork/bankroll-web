@@ -176,8 +176,24 @@
         .vt-bal.is-static { cursor: default; }
         .vt-bal.is-static:hover { opacity: 0.82; text-decoration: none; }
         .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
-        .vt-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; font-size: 0.85rem; cursor: pointer; } /* no opacity — holds a token icon */
-        .vt-check input { width: auto; margin: 0; }
+        .vt-check { display: inline-flex; align-items: center; gap: 10px; font-weight: 400; font-size: 0.85rem; cursor: pointer; } /* no opacity — holds a token icon */
+        /* Themed checkbox: the native control is replaced (appearance:none) with a box wearing
+           the same chrome as the amount inputs, and a tick drawn as a data-URI SVG background
+           (reliable everywhere, unlike ::after on a replaced element). 22px keeps it a real
+           touch target on mobile — the whole label is clickable too, since it wraps the input. */
+        .vt-check input[type="checkbox"] {
+            appearance: none; -webkit-appearance: none;
+            width: 22px; height: 22px; flex: 0 0 auto; margin: 0; padding: 0;
+            border: 1px solid rgba(255,255,255,0.28); border-radius: 6px;
+            background: rgba(255,255,255,0.04); cursor: pointer;
+        }
+        .vt-check input[type="checkbox"]:hover { border-color: rgba(255,255,255,0.55); }
+        .vt-check input[type="checkbox"]:checked {
+            background-color: var(--white); border-color: var(--white);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23140615' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+            background-size: 15px 15px; background-position: center; background-repeat: no-repeat;
+        }
+        .vt-check input[type="checkbox"]:focus-visible { outline: 2px solid rgba(255,255,255,0.6); outline-offset: 2px; }
         /* Zap route is a key/value table with the SAME styling as the stats grid (.vt-kv): it
            inherits the panel font, tabular-nums, key/value opacity and row borders — no overrides
            except cleaner wrapping for the one long text value (the route path). + a status note. */
