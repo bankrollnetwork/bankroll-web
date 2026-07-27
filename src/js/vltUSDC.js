@@ -37,9 +37,9 @@
   // For pulling real mainnet gas/ETH prices into the ≈$ balance readouts.
   var CHAINLINK_ETH_USD = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"; // mainnet ETH/USD feed (8 dec)
   var AGGREGATOR_ABI = [{ name: "latestAnswer", inputs: [], outputs: [{ type: "int256", name: "" }], stateMutability: "view", type: "function" }];
-  // Keyless public fallbacks (llamarpc last — observed returning 521s). Keyed endpoints from
-  // config.js (window.rpcURLs) are preferred ahead of these; see mainnetRpcCandidates().
-  var PUBLIC_MAINNET_RPCS = ["https://ethereum-rpc.publicnode.com", "https://cloudflare-eth.com", "https://eth.llamarpc.com"];
+  // Keyless public fallbacks. (eth.llamarpc.com was dropped — it 521s and fails CORS.) Keyed
+  // endpoints from config.js (window.rpcURLs) are preferred ahead of these; see mainnetRpcCandidates().
+  var PUBLIC_MAINNET_RPCS = ["https://ethereum-rpc.publicnode.com", "https://cloudflare-eth.com"];
   // Mainnet read-RPC candidates in preference order: config.js's window.rpcURLs array (keyed
   // endpoints), the legacy single window.rpcURL, then the keyless public fallbacks.
   function mainnetRpcCandidates() {

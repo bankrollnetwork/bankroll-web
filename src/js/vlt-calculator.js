@@ -13,7 +13,7 @@
     endpointAttempts: 2,
     endpoints: [
       "https://ethereum-rpc.publicnode.com",
-      "https://eth.llamarpc.com"
+      "https://cloudflare-eth.com"
     ],
     addresses: {
       vlt: "0x6b785a0322126826d8226d77e173d75dafb84d11",
