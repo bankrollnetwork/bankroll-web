@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-102526491-3"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag("js", new Date());
+        gtag("config", "UA-102526491-3");
+    </script>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>About Bankroll | Team, Contact and Brand Kit</title>
+    <meta name="description" content="About Bankroll Network: an onchain financial cooperative live on Ethereum since 2020. Overview, contributors, contact channels, and the official brand kit."/>
+    <meta name="keywords" content="About Bankroll, Bankroll Network team, Bankroll contact, Bankroll brand kit, VLT logo, Bankroll press kit"/>
+    <meta name="author" content="Bankroll Network"/>
+    <meta name="robots" content="index, follow, max-image-preview:large"/>
+    <link rel="canonical" href="https://bankroll.network/about.html"/>
+
+    <meta property="og:type" content="article"/>
+    <meta property="og:site_name" content="Bankroll Network"/>
+    <meta property="og:title" content="About Bankroll"/>
+    <meta property="og:description" content="Who builds Bankroll, how to reach us, and the official brand assets."/>
+    <meta property="og:url" content="https://bankroll.network/about.html"/>
+    <meta property="og:image" content="https://bankroll.network/img/logo/vlt-2000.png"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="About Bankroll"/>
+    <meta name="twitter:description" content="Overview, contributors, contact channels, and the Bankroll brand kit."/>
+    <meta name="twitter:image" content="https://bankroll.network/img/logo/vlt-2000.png"/>
+
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="128x128" href="img/logo/vlt-128.png">
+    <link rel="icon" type="image/png" sizes="256x256" href="img/logo/vlt-256.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/logo/vlt-512.png">
+    <link rel="apple-touch-icon" sizes="200x200" href="img/logo/vlt-200.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="font/simple-line-icons/css/simple-line-icons.css"/>
+    <link rel="stylesheet" href="css/vlt-landing.css?v=20260515d"/>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "AboutPage",
+      "name": "About Bankroll",
+      "description": "Overview of Bankroll Network, its contributors, contact channels, and brand assets.",
+      "url": "https://bankroll.network/about.html",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Bankroll Network",
+        "url": "https://bankroll.network/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://bankroll.network/img/logo/vlt-2000.png"
+        },
+        "sameAs": [
+          "https://t.me/bankrollnetwork",
+          "https://x.com/Bankroll_Status",
+          "https://github.com/bankrollnetwork"
+        ]
+      }
+    }
+    </script>
+
+    <!-- Brand-kit tiles: page-local, like app.html scopes its own CSS. Everything else on this
+         page uses the shared vlt-landing.css components. -->
+    <style>
+        /* Anchor offset so #overview/#team/#contact/#brand don't land under the fixed header. */
+        #overview, #team, #contact, #brand { scroll-margin-top: 88px; }
+        .brand-grid { display: grid; gap: 16px; grid-template-columns: 1fr; margin-top: 4px; }
+        @media (min-width: 720px) { .brand-grid { grid-template-columns: 1fr 1fr; } }
+        .brand-card { border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius);
+            background: rgba(23, 9, 24, 0.72); overflow: hidden; }
+        /* The swatch each mark is previewed ON: the wordmark is white (invisible on light), the
+           vault mark is purple (invisible on dark) — so each gets the background it needs. */
+        .brand-swatch { display: grid; place-items: center; min-height: 190px; padding: 28px; }
+        .brand-swatch.on-dark { background: var(--paper-1); }
+        .brand-swatch.on-light { background: #ffffff; }
+        .brand-swatch img { max-width: 100%; max-height: 130px; width: auto; height: auto; }
+        .brand-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+            padding: 16px 18px; border-top: 1px solid rgba(219, 210, 219, 0.16); }
+        .brand-meta strong { display: block; color: var(--white); font-size: 1.02rem; }
+        .brand-meta span { display: block; color: var(--paper-6); font-size: 0.85rem; margin-top: 2px; }
+        .brand-meta .button { margin-left: auto; }
+        .brand-colors { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 22px; }
+        .brand-color { border: 1px solid rgba(219, 210, 219, 0.16); border-radius: var(--radius); overflow: hidden; }
+        .brand-color i { display: block; height: 64px; }
+        .brand-color div { padding: 12px 14px; background: rgba(39, 21, 40, 0.44); }
+        .brand-color strong { display: block; color: var(--white); font-size: 0.95rem; }
+        .brand-color span { display: block; color: var(--paper-6); font-size: 0.8rem; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    </style>
+</head>
+
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+        <nav class="nav-shell" aria-label="Primary navigation">
+            <a class="brand" href="/" aria-label="Bankroll home">
+                <img src="img/logo/LogoWhiteText.png" alt="Bankroll">
+                <span class="brand-token">VLT</span>
+            </a>
+            <button class="nav-toggle" type="button" aria-label="Open navigation">
+                <i class="simple-icon-menu" aria-hidden="true"></i>
+            </button>
+            <div class="nav-links">
+                <a href="/app.html">App</a>
+                <a href="https://x.com/Bankroll_Status" target="_blank" rel="noopener">X</a>
+                <a href="https://t.me/bankrollnetwork" target="_blank" rel="noopener">Telegram</a>
+                <a href="/purple-paper.html">Purple Paper</a>
+                <a href="/calculator.html">Calculator</a>
+                <a href="/security.html">Security</a>
+                <a href="/about.html">About</a>
+                <a href="/archive.html">Archive</a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main">
+        <section class="subpage-hero doc-hero" id="top">
+            <div class="subpage-inner">
+                <div class="subpage-copy reveal is-visible">
+                    <p class="eyebrow">About Bankroll</p>
+                    <h1>About</h1>
+                    <p class="lead">Bankroll is an onchain financial cooperative built around one reserve asset, VLT — live on Ethereum since 2020, governed by immutable contracts rather than a company.</p>
+                    <div class="doc-actions" aria-label="About sections">
+                        <a class="button ghost" href="#overview"><i class="simple-icon-info" aria-hidden="true"></i> Overview</a>
+                        <a class="button ghost" href="#team"><i class="simple-icon-people" aria-hidden="true"></i> Team</a>
+                        <a class="button ghost" href="#contact"><i class="simple-icon-bubble" aria-hidden="true"></i> Contact</a>
+                        <a class="button ghost" href="#brand"><i class="simple-icon-picture" aria-hidden="true"></i> Brand kit</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-section doc-section">
+            <div class="wrap">
+
+                <!-- Overview -->
+                <div class="doc-layout" id="overview">
+                    <article class="doc-main reveal">
+                        <div class="section-heading">
+                            <p class="eyebrow">Overview</p>
+                            <h2>A cooperative, not a company.</h2>
+                            <p>Bankroll launched in 2020 and pioneered Proof of Liquidity: the idea that a digital asset should stand on verified onchain liquidity that no central party can pull. Everything since has been built on that premise.</p>
+                        </div>
+
+                        <div class="step-grid">
+                            <section class="step-card">
+                                <span>01</span>
+                                <h3>Live since 2020</h3>
+                                <p>VLT has traded continuously on Ethereum for six years. The contract, its supply, and its liquidity have been publicly inspectable that entire time.</p>
+                            </section>
+                            <section class="step-card">
+                                <span>02</span>
+                                <h3>Proof of Liquidity</h3>
+                                <p>The market base matters more than the pitch. VLT's liquidity is secured onchain and verifiable by anyone before they participate.</p>
+                            </section>
+                            <section class="step-card">
+                                <span>03</span>
+                                <h3>Owned by nobody</h3>
+                                <p>Fixed 1.8M supply, no mint function, no admin keys, no pause switch. The rules cannot be rewritten after you join — not by a team, not by us.</p>
+                            </section>
+                            <section class="step-card">
+                                <span>04</span>
+                                <h3>Three pillars</h3>
+                                <p>VLT as store of value, VLT as collateral, and vltUSDC — the income layer that puts idle stablecoins to work in VLT's own market.</p>
+                            </section>
+                        </div>
+                    </article>
+
+                    <aside class="doc-aside reveal">
+                        <div class="proof-panel">
+                            <h3>At a glance</h3>
+                            <ul class="key-facts">
+                                <li><span>Founded</span><strong>2020</strong></li>
+                                <li><span>Chain</span><strong>Ethereum</strong></li>
+                                <li><span>Reserve asset</span><strong>VLT</strong></li>
+                                <li><span>Max supply</span><strong>1,800,000</strong></li>
+                                <li><span>Admin keys</span><strong>None</strong></li>
+                                <li><span>Source</span><strong>Open</strong></li>
+                            </ul>
+                        </div>
+                        <div class="doc-callout strong">
+                            <strong>Verify before you trust.</strong>
+                            <p>Every claim on this page is checkable onchain or on GitHub. Start with the <a href="/security.html">Security</a> page.</p>
+                        </div>
+                    </aside>
+                </div>
+
+                <!-- Team -->
+                <div class="doc-wide-panel reveal" id="team">
+                    <div class="section-heading">
+                        <p class="eyebrow">Team</p>
+                        <h2>Contributors, not custodians.</h2>
+                        <p>Bankroll is built by a small group of long-time contributors who work under handles. That is deliberate, and it costs you nothing: the contracts are ownerless, so no contributor — past, present, or future — can move your funds, change the rules, or switch anything off.</p>
+                    </div>
+                    <div class="thesis-stack">
+                        <!-- TODO(brand): replace the handles/roles/blurbs below with the real ones.
+                             Keep the shape: handle in the h3, role after the em dash, one line of
+                             what they own, optional X/GitHub link. -->
+                        <section class="article-panel">
+                            <h3>Bankteller — protocol &amp; contracts</h3>
+                            <p>Solidity, deployments, and the vault architecture behind vltUSDC.</p>
+                            <div class="doc-actions">
+                                <a class="button ghost small" href="https://github.com/bankrollnetwork" target="_blank" rel="noopener">
+                                    <i class="simple-icon-social-github" aria-hidden="true"></i>
+                                    GitHub
+                                </a>
+                            </div>
+                        </section>
+                        <section class="article-panel">
+                            <h3>Handle — frontend &amp; product</h3>
+                            <p>The app, the site, and the flows you actually touch.</p>
+                        </section>
+                        <section class="article-panel">
+                            <h3>Handle — community</h3>
+                            <p>Telegram, announcements, and helping newcomers get onchain safely.</p>
+                            <div class="doc-actions">
+                                <a class="button ghost small" href="https://t.me/bankrollnetwork" target="_blank" rel="noopener">
+                                    <i class="simple-icon-paper-plane" aria-hidden="true"></i>
+                                    Telegram
+                                </a>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div class="resources reveal" id="contact">
+                    <div class="section-heading">
+                        <p class="eyebrow">Contact</p>
+                        <h2>Come talk to us.</h2>
+                        <p>Telegram is the fastest way to reach the community and the contributors. Announcements go out on X, and anything code-related belongs on GitHub.</p>
+                    </div>
+                    <div class="resource-grid" aria-label="Contact channels">
+                        <a class="resource-card" href="https://t.me/bankrollnetwork" target="_blank" rel="noopener">
+                            <i class="simple-icon-paper-plane" aria-hidden="true"></i>
+                            <span class="resource-copy">
+                                <strong>Telegram</strong>
+                                <span>Community &amp; support</span>
+                            </span>
+                        </a>
+                        <a class="resource-card" href="https://x.com/Bankroll_Status" target="_blank" rel="noopener">
+                            <i class="simple-icon-social-twitter" aria-hidden="true"></i>
+                            <span class="resource-copy">
+                                <strong>X</strong>
+                                <span>@Bankroll_Status</span>
+                            </span>
+                        </a>
+                        <a class="resource-card" href="https://github.com/bankrollnetwork" target="_blank" rel="noopener">
+                            <i class="simple-icon-social-github" aria-hidden="true"></i>
+                            <span class="resource-copy">
+                                <strong>GitHub</strong>
+                                <span>Issues &amp; pull requests</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="notice-panel" style="margin-top:22px">
+                        <p><strong>Found a vulnerability?</strong> Report it privately through Telegram rather than a public issue, and give us a chance to respond before disclosing. The audit history and scope live on the <a href="/security.html">Security</a> page.</p>
+                    </div>
+                </div>
+
+                <!-- Brand kit -->
+                <div class="doc-wide-panel reveal" id="brand">
+                    <div class="section-heading">
+                        <p class="eyebrow">Brand kit</p>
+                        <h2>Use the marks correctly.</h2>
+                        <p>Press, listings, and integrations are welcome to use these assets. Both are transparent PNGs — the preview tiles show the background each one is designed for.</p>
+                    </div>
+                    <div class="brand-grid">
+                        <div class="brand-card">
+                            <div class="brand-swatch on-dark">
+                                <img src="img/logo/brand/bankroll.png" alt="Bankroll wordmark, white on a dark background" width="1601" height="338">
+                            </div>
+                            <div class="brand-meta">
+                                <div>
+                                    <strong>Bankroll wordmark</strong>
+                                    <span>PNG · 1601 × 338 · white on transparent</span>
+                                </div>
+                                <a class="button ghost small" href="img/logo/brand/bankroll.png" download>
+                                    <i class="simple-icon-cloud-download" aria-hidden="true"></i>
+                                    Download
+                                </a>
+                            </div>
+                        </div>
+                        <div class="brand-card">
+                            <div class="brand-swatch on-light">
+                                <img src="img/logo/brand/vlt.png" alt="VLT vault mark, purple on a light background" width="2000" height="2000">
+                            </div>
+                            <div class="brand-meta">
+                                <div>
+                                    <strong>VLT vault mark</strong>
+                                    <span>PNG · 2000 × 2000 · purple on transparent</span>
+                                </div>
+                                <a class="button ghost small" href="img/logo/brand/vlt.png" download>
+                                    <i class="simple-icon-cloud-download" aria-hidden="true"></i>
+                                    Download
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="brand-colors" aria-label="Brand colors">
+                        <div class="brand-color">
+                            <i style="background:#140615"></i>
+                            <div><strong>Ink</strong><span>#140615</span></div>
+                        </div>
+                        <div class="brand-color">
+                            <i style="background:#7a3d7b"></i>
+                            <div><strong>Vault purple</strong><span>#7A3D7B</span></div>
+                        </div>
+                        <div class="brand-color">
+                            <i style="background:#dbd2db"></i>
+                            <div><strong>Paper</strong><span>#DBD2DB</span></div>
+                        </div>
+                        <div class="brand-color">
+                            <i style="background:#ffffff"></i>
+                            <div><strong>White</strong><span>#FFFFFF</span></div>
+                        </div>
+                    </div>
+
+                    <div class="notice-panel" style="margin-top:22px">
+                        <p><strong>Please do:</strong> keep clear space around the marks, scale them proportionally, and use the wordmark on dark backgrounds and the vault mark wherever it stays legible.</p>
+                        <p><strong>Please don't:</strong> recolor, rotate, stretch, or add effects to the marks; rebuild them from scratch; or use them in a way that implies a partnership or endorsement that doesn't exist.</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <p>Bankroll is a decentralized protocol, not a custodian. You interact with blockchain contracts directly and are responsible for your own transactions. 2026 &copy; Bankroll.</p>
+        </div>
+    </footer>
+
+    <button class="to-top" type="button" aria-label="Back to top">
+        <i class="simple-icon-arrow-up" aria-hidden="true"></i>
+    </button>
+    <div class="copy-toast" role="status" aria-live="polite"></div>
+
+    <script src="js/vendor/jquery-3.3.1.min.js"></script>
+    <script src="js/vlt-landing.js?v=20260515b"></script>
+</body>
+
+</html>
