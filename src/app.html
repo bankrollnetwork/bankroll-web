@@ -118,6 +118,12 @@
             background: rgba(255,255,255,0.04); color: inherit; font: inherit;
         }
         .vt-row input[readonly] { opacity: 0.6; }
+        /* No focus ring on text-entry fields — the blinking caret is the indicator, and the UA
+           default ring (text inputs match :focus-visible even on a mouse click) clashed with the
+           slider's suppressed ring and the checkbox's custom one. Scoped to fields that DO show a
+           caret; the checkbox and buttons keep their focus styles. */
+        .vt-row input:focus, .vt-row input:focus-visible,
+        .vt-slip-num:focus, .vt-slip-num:focus-visible { outline: none; box-shadow: none; }
         /* Amount boxes: right-aligned contents (mobile right-thumb ergonomics). Scoped to the
            decimal-keypad inputs so address/URL fields keep normal alignment. */
         input[inputmode="decimal"] { text-align: right; }
