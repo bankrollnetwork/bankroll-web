@@ -925,7 +925,10 @@
     var tin = t.tin.toLowerCase();
     var chip = $("#swp-bal");
     chip.attr("data-token", tin);
-    chip.text(fmtBal(swapMaxRaw(tin), decOf(tin)) + " · max");
+    // Shows the TRUE balance, not the spendable max: with ETH the 0.02 gas reserve can swallow a
+    // small balance entirely, and a chip reading "0" while the wallet holds ETH looks broken.
+    // Clicking it still inserts the reserve-adjusted max (see onBalChip → swapMaxRaw).
+    chip.text(fmtBal(balRaw(tin), decOf(tin)) + " · max");
     var tout = t.tout.toLowerCase();
     var oChip = $("#swp-out-bal");
     oChip.attr("data-token", tout);
