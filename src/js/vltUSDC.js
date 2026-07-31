@@ -403,16 +403,16 @@
     try {
       var eth = await state.readWeb3.eth.getBalance(state.account);
       state.bal.eth = eth;
-      setField("eth", localize(formatUnits(eth, 18, 4)));
+      setField("eth", localize(fmtBal(eth, 18)));
       if (state.tokens.usdc) {
         var u = new state.readWeb3.eth.Contract(ERC20_ABI, state.tokens.usdc);
         state.bal.usdc = String(await u.methods.balanceOf(state.account).call());
-        setField("usdc", localize(formatUnits(state.bal.usdc, state.tokens.usdcDec, 4)));
+        setField("usdc", localize(fmtBal(state.bal.usdc, state.tokens.usdcDec)));
       }
       if (state.tokens.vlt) {
         var t = new state.readWeb3.eth.Contract(ERC20_ABI, state.tokens.vlt);
         state.bal.vlt = String(await t.methods.balanceOf(state.account).call());
-        setField("vlt", localize(formatUnits(state.bal.vlt, state.tokens.vltDec, 4)));
+        setField("vlt", localize(fmtBal(state.bal.vlt, state.tokens.vltDec)));
       }
       if (state.read.vault) {
         state.bal.shares = String(await state.read.vault.methods.balanceOf(state.account).call());
@@ -462,9 +462,9 @@
     var vltUsd = vltN * (state.priceUsdcPerVlt || 0);
     var sharesUsd = have ? Number(state.bal.shares || "0") * (state.navPerShareUsdc || 0) : 0;
     setField("w-account", have ? short(state.account) : "not connected");
-    setField("w-eth", have ? localize(formatUnits(state.bal.eth || "0", 18, 4)) : "-");
-    setField("w-vlt", have ? localize(formatUnits(state.bal.vlt || "0", state.tokens.vltDec, 4)) : "-");
-    setField("w-usdc", have ? localize(formatUnits(state.bal.usdc || "0", state.tokens.usdcDec, 2)) : "-");
+    setField("w-eth", have ? localize(fmtBal(state.bal.eth || "0", 18)) : "-");
+    setField("w-vlt", have ? localize(fmtBal(state.bal.vlt || "0", state.tokens.vltDec)) : "-");
+    setField("w-usdc", have ? localize(fmtBal(state.bal.usdc || "0", state.tokens.usdcDec)) : "-");
     setField("w-shares", have ? compact(state.bal.shares || "0") : "-");
     setField("w-eth-usd", usdEq(ethUsd));
     setField("w-vlt-usd", usdEq(vltUsd));
@@ -925,11 +925,11 @@
     var tin = t.tin.toLowerCase();
     var chip = $("#swp-bal");
     chip.attr("data-token", tin);
-    chip.text(formatUnits(swapMaxRaw(tin), decOf(tin), 4) + " · max");
+    chip.text(fmtBal(swapMaxRaw(tin), decOf(tin)) + " · max");
     var tout = t.tout.toLowerCase();
     var oChip = $("#swp-out-bal");
     oChip.attr("data-token", tout);
-    oChip.text(formatUnits(balRaw(tout), decOf(tout), 4));
+    oChip.text(fmtBal(balRaw(tout), decOf(tout)));
     // Token logos + labels on the dropdown triggers follow the picks (covers change events AND
     // programmatic updates like flipSwap, which set the hidden selects without firing change).
     $("#swp-in-ic").attr("src", "img/logo/coingecko/" + tin + ".png");
@@ -967,6 +967,20 @@
   function toBN(x) { return web3.utils.toBN(x); }
   function decOf(token) { return token === "usdc" ? state.tokens.usdcDec : token === "shares" ? state.tokens.sharesDec : token === "eth" ? 18 : state.tokens.vltDec; }
   function balRaw(token) { return state.bal[token] || "0"; }
+  // Balance display with SIGNIFICANT digits rather than a fixed decimal count. A flat 4 dp reads
+  // fine for 12.3456 but truncates 0.00004512 ETH to a bare "0" — the wallet looks empty when it
+  // isn't. Sub-1 values push past their leading zeros to keep ~4 significant digits (capped at
+  // the token's own decimals); everything ≥ 1 keeps the tidy 4 dp. Returns an unlocalized string
+  // (callers that want thousands separators wrap it in localize(), as they already did).
+  function fmtBal(raw, dec) {
+    var full = formatUnits(raw, dec, dec); // every decimal, trailing zeros already trimmed
+    var dot = full.indexOf(".");
+    if (dot === -1) return full;           // whole number (incl. "0") — nothing to extend
+    var frac = full.slice(dot + 1);
+    var lead = frac.length - frac.replace(/^0+/, "").length; // zeros between the point and the first digit
+    var places = (full.slice(0, dot) !== "0" || lead === 0) ? 4 : Math.min(dec, lead + 4);
+    return formatUnits(raw, dec, places);
+  }
 
   // ── swap token dropdowns (wallet-style rows over the hidden native selects) ─
   // Rendered fresh on every open from cached balances × latest prices — no RPC, mirroring
@@ -1054,7 +1068,7 @@
   function renderBalanceChips() {
     $(".vt-bal").not("#swp-bal, #swp-out-bal").each(function () {
       var tk = $(this).data("token");
-      $(this).text(formatUnits(balRaw(tk), decOf(tk), 4) + " · max");
+      $(this).text(fmtBal(balRaw(tk), decOf(tk)) + " · max");
     });
     renderSwapChip(); // the swap chips own their own render (tokens follow the selects; ETH reserves gas)
   }
