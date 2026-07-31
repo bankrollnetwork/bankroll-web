@@ -73,8 +73,8 @@
         @media (min-width: 720px) { .brand-grid { grid-template-columns: 1fr 1fr; } }
         .brand-card { border: 1px solid rgba(219, 210, 219, 0.2); border-radius: var(--radius);
             background: rgba(23, 9, 24, 0.72); overflow: hidden; }
-        /* The swatch each mark is previewed ON: the wordmark is white (invisible on light), the
-           vault mark is purple (invisible on dark) — so each gets the background it needs. */
+        /* Marks preview on the dark swatch by default — one consistent backdrop across the kit.
+           on-light exists for the inverted (ink) wordmark, which needs the opposite. */
         .brand-swatch { display: grid; place-items: center; min-height: 190px; padding: 28px; }
         .brand-swatch.on-dark { background: var(--paper-1); }
         .brand-swatch.on-light { background: #ffffff; }
@@ -297,6 +297,21 @@
                             </div>
                         </div>
                         <div class="brand-card">
+                            <div class="brand-swatch on-light">
+                                <img src="img/logo/brand/bankroll-black.png" alt="Bankroll wordmark in ink, on a light background" width="1601" height="338">
+                            </div>
+                            <div class="brand-meta">
+                                <div>
+                                    <strong>Bankroll wordmark — ink</strong>
+                                    <span>PNG · 1601 × 338 · #140615 on transparent; light backgrounds</span>
+                                </div>
+                                <a class="button ghost small" href="img/logo/brand/bankroll-black.png" download>
+                                    <i class="simple-icon-cloud-download" aria-hidden="true"></i>
+                                    Download
+                                </a>
+                            </div>
+                        </div>
+                        <div class="brand-card">
                             <div class="brand-swatch on-dark">
                                 <img src="img/logo/brand/vlt-disc.png" alt="VLT token icon: purple vault on a white disc, shown on a dark background" width="2000" height="2000">
                             </div>
@@ -312,7 +327,7 @@
                             </div>
                         </div>
                         <div class="brand-card">
-                            <div class="brand-swatch on-light">
+                            <div class="brand-swatch on-dark">
                                 <img src="img/logo/brand/vlt-disc-on-light.png" alt="VLT token icon with an outlined disc, shown on a light background" width="2000" height="2000">
                             </div>
                             <div class="brand-meta">
@@ -342,7 +357,7 @@
                             </div>
                         </div>
                         <div class="brand-card">
-                            <div class="brand-swatch on-light">
+                            <div class="brand-swatch on-dark">
                                 <img src="img/logo/brand/vltusdc-on-light.png" alt="vltUSDC mark with an outlined vault disc, on a light background" width="2000" height="1200">
                             </div>
                             <div class="brand-meta">
@@ -357,7 +372,7 @@
                             </div>
                         </div>
                         <div class="brand-card">
-                            <div class="brand-swatch on-light">
+                            <div class="brand-swatch on-dark">
                                 <img src="img/logo/brand/vlt.png" alt="VLT vault mark, purple on a light background" width="2000" height="2000">
                             </div>
                             <div class="brand-meta">
