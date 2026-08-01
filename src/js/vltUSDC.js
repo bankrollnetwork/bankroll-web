@@ -147,6 +147,7 @@
     slippageBps: 100, // zap min-out tolerance; default 1%
     zapSeq: 0, // sequence guard for the async zap quote
     zapExpShares: null, // exact shares from the last successful zap static call (else NAV estimate)
+    depExpShares: null, // ditto for the Advanced two-token deposit (drives its "your position" line)
     swapSeq: 0, // sequence guard for the async Swap-tab quote
     swapSide: "in", // which Swap box the user last edited ("in" | "out") — drives the quote direction
     redSeq: 0, // sequence guard for the async USDC-only withdraw estimate
@@ -1075,6 +1076,17 @@
       }
     } catch (e) {}
     renderPosition("zap-position", dep);
+    var adv = "0";
+    try {
+      var vltRaw = parseUnits($("#dep-vlt").val(), state.tokens.vltDec);
+      var usdcRaw = parseUnits($("#dep-usdc").val(), state.tokens.usdcDec);
+      if (toBN(vltRaw).gtn(0) && toBN(usdcRaw).gtn(0)) {
+        adv = state.depExpShares || estSharesFromUsd(
+          Number(formatUnits(usdcRaw, state.tokens.usdcDec)) +
+          Number(formatUnits(vltRaw, state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0));
+      }
+    } catch (e) {}
+    renderPosition("dep-position", adv);
     var red = "0";
     try {
       var sh = toBN(parseUnits($("#red-shares").val(), state.tokens.sharesDec));
@@ -1339,7 +1351,7 @@
       state.zapExpShares = expShares;
       setRoute(baseRows(routeStr).concat([
         ["minimum VLT", fmtT(minVlt, vltDec) + " " + tokHtml("VLT")],
-        ["minimum vltUSDC", fmtT(minShares, sharesDec) + " " + sharesHtml()],
+        ["minimum vltUSDC", compact(minShares) + " " + sharesHtml()],
         ["slippage", slipPct + "%"],
       ]));
       zapPreview(); // undebounced: refresh the recv line now that the exact figure is known
@@ -1581,7 +1593,7 @@
     try {
       var vltRaw = parseUnits($("#dep-vlt").val(), state.tokens.vltDec);
       var usdcRaw = parseUnits($("#dep-usdc").val(), state.tokens.usdcDec);
-      if (toBN(vltRaw).lten(0) || toBN(usdcRaw).lten(0)) { $("#dep-minshares").val("0"); setField("dep-out", ""); return; }
+      if (toBN(vltRaw).lten(0) || toBN(usdcRaw).lten(0)) { $("#dep-minshares").val("0"); setField("dep-out", ""); state.depExpShares = null; renderPositions(); return; }
       var shares;
       if (APPROVALS[0].on && APPROVALS[1].on) {
         shares = String(await state.write.vault.methods.deposit(vltRaw, usdcRaw, "0", await txDeadline(), state.account).call({ from: state.account }));
@@ -1597,15 +1609,19 @@
       // "you receive ≈" readout (right-aligned under the input, render-when-available) — same UX as zap/redeem.
       var price = state.priceUsdcPerVlt || 0;
       var pstr = price.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
+      state.depExpShares = shares; // exact figure for the position line (else the NAV estimate)
       setFieldHtml("dep-out", compact(shares) + " " + sharesHtml() + " · min " +
-        fmtT(minShares, state.tokens.sharesDec) + " (−" + (state.slippageBps / 100) + "% slippage)" +
+        compact(minShares) + " (−" + (state.slippageBps / 100) + "% slippage)" +
         (price > 0 ? " · @ $" + pstr + " / VLT" : ""));
-    } catch (e) { $("#dep-minshares").val("0"); setField("dep-out", ""); /* over balance / not-yet-valid */ }
+      renderPositions();
+    } catch (e) { $("#dep-minshares").val("0"); setField("dep-out", ""); state.depExpShares = null; /* over balance / not-yet-valid */ }
   }
   var _depTimer;
   function depositPreviewDebounced() { clearTimeout(_depTimer); _depTimer = setTimeout(depositPreview, 400); }
   // deposit input: synchronous estimate immediately, then a debounced expected-shares preview.
   function onDepInput(side, reconcile) {
+    state.depExpShares = null; // new amount ⇒ the last static-call figure is stale
+    renderPositionsSoon();
     depEstimate(side, reconcile);       // cross-fill the other side at the live price
     syncDepSlider("vlt"); syncDepSlider("usdc");
     depositPreviewDebounced();
@@ -1625,6 +1641,8 @@
     renderDepReadout(side);
   }
   function onDepSlider(side) {
+    state.depExpShares = null;
+    renderPositionsSoon();
     var dec = side === "vlt" ? state.tokens.vltDec : state.tokens.usdcDec;
     var pct = parseInt($("#dep-" + side + "-slider").val(), 10) || 0;
     $("#dep-" + side).val(formatUnits(toBN(balRaw(side)).muln(pct).divn(100).toString(), dec, dec));
