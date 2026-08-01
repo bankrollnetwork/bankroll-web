@@ -447,6 +447,7 @@
         localize(formatUnits(String(state.bal.sharesUsdc), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC")
       : "");
     renderWalletModal(); // keep the wallet browser current with balances/prices as they land
+    renderPositions();   // ditto the Deposit/Withdraw "your position" lines
   }
 
   // ── wallet modal ("wallet browser": ETH / VLT / USDC / vltUSDC + ≈$ total) ──
@@ -1038,6 +1039,52 @@
   function usdEq(n) { return (isFinite(n) && n > 0) ? "≈ $" + localize(n.toFixed(2)) : ""; }
   // Approval-free share estimate: USDC value deployed ÷ NAV/share (cached in refreshDashboard).
   // Display + a pre-approval minShares floor; the exact figure comes from the static call once approved.
+  // ── "your position" line (Deposit / Withdraw) ───────────────────────────────
+  // Shows the holding this action would leave you with: "your position  396 T ≈ $473 → 2,486 T
+  // ≈ $2,973". Pure client math over the cached share balance × navPerShareUsdc — no RPC — so it
+  // can refresh on every keystroke. `deltaRaw` is signed: positive for a deposit's expected
+  // shares, negative for the shares a withdraw burns. Renders nothing (and the :empty CSS hides
+  // the row) when there's nothing to say: disconnected, or no position and no amount entered.
+  function renderPosition(field, deltaRaw) {
+    var el = $f(field); if (!el) return;
+    var cur = toBN(balRaw("shares"));
+    var delta = toBN(String(deltaRaw || "0"));
+    if (!state.account || (cur.lten(0) && delta.isZero())) { el.innerHTML = ""; return; }
+    var nav = state.navPerShareUsdc || 0;
+    var after = cur.add(delta);
+    if (after.isNeg()) after = toBN("0");
+    // No token badge here: "your position" already names it, and repeating the pair badge twice
+    // on one line pushed it into an ugly wrap on narrow panels.
+    function part(sh) {
+      var usd = Number(sh.toString()) * nav;
+      return compact(sh.toString()) + (usd > 0 ? " ≈ $" + localize(usd.toFixed(2)) : "");
+    }
+    var vals = "<strong>" + part(cur) + "</strong>";
+    if (!delta.isZero()) vals += '<span class="vt-pos-arrow">→</span><strong>' + part(after) + "</strong>";
+    el.innerHTML = "<span>your position</span><span class=\"vt-pos-vals\">" + vals + "</span>";
+  }
+  // Re-render both panels' position lines from whatever their inputs currently hold. Cheap enough
+  // to call from balance refreshes and slider drags alike.
+  function renderPositionsSoon() { setTimeout(renderPositions, 0); } // sliders set the input first
+  function renderPositions() {
+    var dep = "0";
+    try {
+      var totalRaw = parseUnits($("#zap-usdc").val(), state.tokens.usdcDec);
+      if (toBN(totalRaw).gtn(0)) {
+        dep = state.zapExpShares || estSharesFromUsd(Number(formatUnits(totalRaw, state.tokens.usdcDec)));
+      }
+    } catch (e) {}
+    renderPosition("zap-position", dep);
+    var red = "0";
+    try {
+      var sh = toBN(parseUnits($("#red-shares").val(), state.tokens.sharesDec));
+      var held = toBN(balRaw("shares"));
+      if (sh.gt(held)) sh = held;                 // can't burn more than you hold
+      if (sh.gtn(0)) red = "-" + sh.toString();   // a withdraw shrinks the position
+    } catch (e) {}
+    renderPosition("red-position", red);
+  }
+
   function estSharesFromUsd(effUsd) {
     var nav = state.navPerShareUsdc;
     if (!nav || !(effUsd > 0)) return "0";
@@ -1071,7 +1118,9 @@
   function renderBalanceChips() {
     $(".vt-bal").not("#swp-bal, #swp-out-bal").each(function () {
       var tk = $(this).data("token");
-      $(this).text(fmtBal(balRaw(tk), decOf(tk)) + " · max");
+      // Shares are raw liquidity units (0 decimals) — show them the compact "396 T" way the rest
+      // of the app does, not as a 15-digit integer.
+      $(this).text((tk === "shares" ? compact(balRaw(tk)) : fmtBal(balRaw(tk), decOf(tk))) + " · max");
     });
     renderSwapChip(); // the swap chips own their own render (tokens follow the selects; ETH reserves gas)
   }
@@ -1154,6 +1203,7 @@
     setField("zap-pct", ($("#zap-slider").val() || "0") + "%");
   }
   function onZapSlider() {
+    renderPositionsSoon();
     var pct = parseInt($("#zap-slider").val(), 10) || 0;
     var usdcRaw = toBN(state.bal.usdc || "0").muln(pct).divn(100).toString();
     $("#zap-usdc").val(formatUnits(usdcRaw, state.tokens.usdcDec, state.tokens.usdcDec));
@@ -1176,10 +1226,11 @@
   function zapPreview() {
     try {
       var totalRaw = parseUnits($("#zap-usdc").val(), state.tokens.usdcDec);
-      if (toBN(totalRaw).lten(0)) { setField("zap-out", ""); return; }
+      if (toBN(totalRaw).lten(0)) { setField("zap-out", ""); renderPositions(); return; }
       var totalUsd = Number(formatUnits(totalRaw, state.tokens.usdcDec));
       var shares = state.zapExpShares || estSharesFromUsd(totalUsd);
-      setFieldHtml("zap-out", (toBN(shares).gtn(0) ? fmtT(shares, state.tokens.sharesDec) + " " + sharesHtml() + " " : "") + "≈ $" + totalUsd.toFixed(2));
+      setFieldHtml("zap-out", (toBN(shares).gtn(0) ? compact(shares) + " " + sharesHtml() + " " : "") + "≈ $" + totalUsd.toFixed(2));
+      renderPositions();
     } catch (e) { setField("zap-out", ""); }
   }
   // Render the zap route as a key/value table (like the stats grid) plus an optional status/error
@@ -1546,7 +1597,7 @@
       // "you receive ≈" readout (right-aligned under the input, render-when-available) — same UX as zap/redeem.
       var price = state.priceUsdcPerVlt || 0;
       var pstr = price.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
-      setFieldHtml("dep-out", fmtT(shares, state.tokens.sharesDec) + " " + sharesHtml() + " · min " +
+      setFieldHtml("dep-out", compact(shares) + " " + sharesHtml() + " · min " +
         fmtT(minShares, state.tokens.sharesDec) + " (−" + (state.slippageBps / 100) + "% slippage)" +
         (price > 0 ? " · @ $" + pstr + " / VLT" : ""));
     } catch (e) { $("#dep-minshares").val("0"); setField("dep-out", ""); /* over balance / not-yet-valid */ }
@@ -1686,6 +1737,7 @@
     setField("red-pct", ($("#red-slider").val() || "0") + "%");
   }
   function onRedeemSlider() {
+    renderPositionsSoon();
     var pct = parseInt($("#red-slider").val(), 10) || 0;
     var sharesRaw = toBN(state.bal.shares || "0").muln(pct).divn(100).toString();
     $("#red-shares").val(formatUnits(sharesRaw, state.tokens.sharesDec, state.tokens.sharesDec));
@@ -1702,7 +1754,7 @@
     try {
       if (!state.read.vault) return;
       var sharesRaw = parseUnits($("#red-shares").val(), state.tokens.sharesDec);
-      if (web3.utils.toBN(sharesRaw).lten(0)) { setField("red-out", ""); renderRedeemReadout(); note("red-note", " "); return; }
+      if (web3.utils.toBN(sharesRaw).lten(0)) { setField("red-out", ""); renderRedeemReadout(); renderPositions(); note("red-note", " "); return; }
       // Pure view — no wallet, no approval, no staticCall. Returns the in-kind principal at the
       // current price. Display-only: redeem() takes no min bounds (in-kind, can't be sandwiched).
       var r = await state.read.vault.methods.previewRedeem(sharesRaw).call();

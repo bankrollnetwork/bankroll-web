@@ -178,6 +178,20 @@
         .vt-recv > span:first-child { font-weight: 700; opacity: 0.85; }
         .vt-recv > span[data-field] { opacity: 0.7; }
         .vt-recv:has([data-field]:empty) { display: none; }
+        /* "your position  396 T ≈ $473 → 2,486 T ≈ $2,973" — what the pending action does to your
+           holding. Pure client math from cached balances, so it costs no RPC; hidden when empty
+           (no wallet, or nothing held and nothing entered). */
+        .vt-position { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+            margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.85rem; }
+        .vt-position:empty { display: none; }
+        .vt-position > span:first-child { color: rgba(219, 210, 219, 0.7); flex: 0 0 auto; }
+        /* Values group and right-align so "current → after" wraps as ONE block, never orphaning
+           the after-value on its own line. */
+        .vt-pos-vals { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end;
+            gap: 6px; margin-left: auto; text-align: right; }
+        .vt-position strong { color: var(--white); font-weight: 700; font-variant-numeric: tabular-nums; }
+        .vt-position .vt-pos-arrow { color: rgba(219, 210, 219, 0.55); }
         /* Clickable "balance: X (max)" chip sitting on the right of an input's label. */
         /* Match the "you receive" estimate value (.vt-recv [data-field]): same 0.85rem, white text at
            an effective 0.7. The label no longer composites via opacity (logos never dim), so the chip
@@ -853,6 +867,7 @@
                             </div>
                             <input id="zap-usdc" type="text" value="" placeholder="0.0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="zap-out"></span></div>
+                            <div class="vt-position" data-field="zap-position"></div>
                         </div>
                         <input type="hidden" id="zap-swap" value="0">
                         <input type="hidden" id="zap-minvlt" value="0">
@@ -902,6 +917,7 @@
                             </div>
                             <input id="red-shares" type="text" value="0" inputmode="decimal">
                             <div class="vt-recv"><span>you receive ≈</span> <span data-field="red-out"></span></div>
+                            <div class="vt-position" data-field="red-position"></div>
                         </div>
                         <div class="vt-actions vt-check-row" style="margin-top:0; margin-bottom:4px;">
                             <label class="vt-check"><input type="checkbox" id="red-usdc-only"> Receive <img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""> USDC only</label>
