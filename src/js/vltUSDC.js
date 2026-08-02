@@ -369,8 +369,6 @@
         setField("vs-apr30", aprPct(d30));
       } catch (e) { setField("vs-feegrowth", "—"); setField("vs-apr7", "—"); setField("vs-apr30", "—"); }
       await refreshV4Price(); // live pool price for the deposit estimator
-      var vp = state.priceUsdcPerVlt || 0;
-      setFieldHtml("vs-vlt-price", vp ? "$" + (vp >= 0.01 ? vp.toFixed(4) : vp.toPrecision(4)) + " / " + tokHtml("VLT") : "—");
       // Cache NAV/share (USDC, principal only) so deposit/zap can show an approval-free "you receive"
       // estimate (shares ≈ value deposited ÷ NAV/share) the way redeem uses previewRedeem.
       try {
@@ -382,6 +380,9 @@
           var posUsd = Number(formatUnits(String(pUsdcRaw), state.tokens.usdcDec)) +
             Number(formatUnits(String(pVltRaw), state.tokens.vltDec)) * (state.priceUsdcPerVlt || 0);
           state.navPerShareUsdc = posUsd / Number(supply);
+          // Same figure the wallet browser prices shares at: NAV per share is a per-L number, so
+          // quote it per T of liquidity to match how balances read ("396 T").
+          setField("vs-price", fmtSpot(state.navPerShareUsdc * 1e12) + " / T");
           // Stash the position's composition for the global VLT stats (venue depth / supply shares).
           state._poolVlt = String(pVltRaw); state._poolUsdc = String(pUsdcRaw); state._poolUsd = posUsd;
           // Pool = the position's underlying token amounts; TVL = its USD value (principal, at live price).
