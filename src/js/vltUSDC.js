@@ -382,7 +382,7 @@
           state.navPerShareUsdc = posUsd / Number(supply);
           // Same figure the wallet browser prices shares at: NAV per share is a per-L number, so
           // quote it per T of liquidity to match how balances read ("396 T").
-          setField("vs-price", fmtSpot(state.navPerShareUsdc * 1e12) + " / T");
+          setFieldHtml("vs-price", fmtSpot(state.navPerShareUsdc * 1e12) + " / T " + sharesHtml());
           // Stash the position's composition for the global VLT stats (venue depth / supply shares).
           state._poolVlt = String(pVltRaw); state._poolUsdc = String(pUsdcRaw); state._poolUsd = posUsd;
           // Pool = the position's underlying token amounts; TVL = its USD value (principal, at live price).
@@ -524,7 +524,7 @@
   function renderVltStats() {
     var spot = state.priceUsdcPerVlt || 0;
     var vltDec = state.tokens.vltDec || 18;
-    setField("g-vlt-spot", spot ? fmtSpot(spot) : "—");
+    setFieldHtml("g-vlt-spot", spot ? fmtSpot(spot) + " / " + tokHtml("VLT") : "—");
     var supply = state._vltSupplyRaw != null ? Number(formatUnits(state._vltSupplyRaw, vltDec)) : 1800000;
     setField("g-vlt-mcap", spot ? "$" + localize((supply * spot).toFixed(0)) : "—");
     // Venue depths: V4 = the vault position (effectively the pool); V2 = the WETH/VLT pair.
@@ -547,10 +547,10 @@
     var ethPerVlt = (v2Vlt && v2Weth) ? v2Weth / v2Vlt : null;
     if (ethPerVlt != null && eth) {
       var v2Price = ethPerVlt * eth;
-      setField("g-vlt-v2", fmtSpot(v2Price));
+      setFieldHtml("g-vlt-v2", fmtSpot(v2Price) + " / " + tokHtml("VLT"));
       setField("g-vlt-spread", spot ? ((v2Price - spot) / spot * 100).toFixed(2) + "% vs V4" : "");
     } else { setField("g-vlt-v2", "—"); setField("g-vlt-spread", ""); }
-    setField("g-vlt-eth", ethPerVlt != null ? Number(ethPerVlt.toPrecision(3)) + " ETH" : "—");
+    setFieldHtml("g-vlt-eth", ethPerVlt != null ? Number(ethPerVlt.toPrecision(3)) + " " + tokHtml("ETH") + " / " + tokHtml("VLT") : "—");
   }
 
   // ── swapData builder (mirrors scripts/dev/build_vlt_route.js) ───────────────
