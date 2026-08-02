@@ -350,6 +350,7 @@
       var sdec = state.tokens.sharesDec;
       var liq = await v.positionLiquidity().call();
       var supply = await v.totalSupply().call();
+      state.supplyRaw = String(supply); // for the "share of vault" stat in Your Stats
       setField("vs-liq", compact(liq));
       setFieldHtml("vs-supply", compact(supply) + " " + sharesHtml());
       var per = (Number(supply) > 0) ? (Number(liq) / (Number(supply) / Math.pow(10, sdec))) : 0;
@@ -447,7 +448,13 @@
     setFieldHtml("shares-parts", (state.bal.sharesVlt != null)
       ? localize(formatUnits(String(state.bal.sharesVlt), state.tokens.vltDec, 2)) + " " + tokHtml("VLT") + " | " +
         localize(formatUnits(String(state.bal.sharesUsdc), state.tokens.usdcDec, 2)) + " " + tokHtml("USDC")
-      : "");
+      : "—");
+    // Share of the vault: your shares over total supply. Both are raw L integers (~1e16), well
+    // inside double precision. Sub-basis-point stakes keep 2 significant digits instead of
+    // rounding to a bare "0.00%".
+    var supN = Number(state.supplyRaw || "0"), myN = Number(state.bal.shares || "0");
+    var pct = supN > 0 ? myN / supN * 100 : 0;
+    setField("share-pct", supN > 0 ? (pct >= 0.01 || pct === 0 ? pct.toFixed(2) : Number(pct.toPrecision(2))) + "%" : "—");
     renderWalletModal(); // keep the wallet browser current with balances/prices as they land
     renderPositions();   // ditto the Deposit/Withdraw "your position" lines
   }
@@ -2346,7 +2353,8 @@
     setField("account", "not connected");
     setField("net", "-");
     ["eth", "usdc", "vlt", "shares"].forEach(function (f) { setField(f, "-"); });
-    setField("eth-usd", ""); setField("vlt-usd", ""); setField("shares-usd", ""); setField("shares-parts", ""); // hide sub-lines
+    setField("eth-usd", ""); setField("vlt-usd", ""); setField("shares-usd", ""); // hide sub-lines
+    setField("shares-parts", "-"); setField("share-pct", "-");
     renderWalletModal(); // blank out the wallet browser too
     logEntry("wallet disconnected", "ok");
   }
