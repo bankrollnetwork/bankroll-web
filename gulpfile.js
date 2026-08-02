@@ -32,11 +32,24 @@ let userefConfig = {
     }
 }
 
+// The Dore theme SCSS is frozen vendor code, used only by the legacy archive pages (the VLT
+// site runs on hand-written vlt-landing.css). It predates modern Sass, so compiling it emits
+// ~140 deprecation warnings — @import, global builtins, darken()/lighten(), and `/` division —
+// none of which we're going to fix in a vendor stylesheet nothing new is built on. Silence
+// exactly those, so a real warning in OUR SCSS still surfaces. (legacy-js-api is gulp-sass 5
+// itself calling renderSync, not our code.)
+var DORE_DEPRECATIONS = ["import", "global-builtin", "color-functions", "slash-div", "legacy-js-api"];
+
+// Only the theme the pages actually load. scripts.js hardcodes dore.dark.purple.min.css and its
+// theme-switcher UI is commented out, so the other nine were compiled for nobody — ~90% of the
+// build's sass work and warning noise. Their committed .css/.min.css stay in src/ (and still
+// ship via the minifycss copy), so nothing 404s; add a theme back to this glob if the switcher
+// is ever revived.
 gulp.task("sass", function () {
     return gulp
-        .src("src/css/sass/themes/*.scss")
+        .src("src/css/sass/themes/dore.dark.purple.scss")
         .pipe(wait(700))
-        .pipe(sass())
+        .pipe(sass({ silenceDeprecations: DORE_DEPRECATIONS, quietDeps: true }))
         .pipe(gulp.dest("src/css"))
         .pipe(cssnano({zindex: false}))
         .pipe(rename({suffix: '.min'}))
