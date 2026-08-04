@@ -173,6 +173,28 @@ function makeRateLimiter({ rate = 10, intervalMs = 1000, maxBackoffMs = 8000 } =
           setTimeout(pump, 0);
         });
     }
+
+    // DEADLOCK GUARD. pump() is otherwise only re-entered by a NEW schedule() or by an
+    // in-flight task settling. Once the rate window is full and every started task has already
+    // settled, neither happens: the queue strands forever and each caller hangs on a promise
+    // that never settles — no error, no rejection, just a page stuck on placeholders. (Reproduced
+    // at rate 6/s: a 14-request burst completed 6 and stranded 8.) So if work is still queued but
+    // nothing could start this pass, wake ourselves when the window frees a slot — or when the
+    // earliest 429 backoff expires, whichever is sooner.
+    if (queue.length) {
+      const waits = [];
+      if (timestamps.length >= rate) waits.push(timestamps[0] + intervalMs - now);
+      const soonest = queue.reduce((m, it) => Math.min(m, it.nextAt || 0), Infinity);
+      if (soonest !== Infinity && soonest > now) waits.push(soonest - now);
+      if (waits.length) schedulePump(Math.min.apply(null, waits) + 5);
+    }
+  }
+
+  // One pending wake-up at a time — pump() is idempotent, so extra timers are pure waste.
+  let pumpTimer = null;
+  function schedulePump(delayMs) {
+    if (pumpTimer) return;
+    pumpTimer = setTimeout(() => { pumpTimer = null; pump(); }, Math.max(0, delayMs));
   }
 
   return (fn) => schedule(fn);
