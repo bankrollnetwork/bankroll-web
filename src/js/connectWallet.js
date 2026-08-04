@@ -15,15 +15,28 @@ function initConnect(callback) {
           btn.classList.add('disabled');
           btn.style.pointerEvents = 'none';
 
-          await callback()
-
         } catch (e) {
-          console.log('❌ ' + e.message);
-          if (e.message.includes('not detected')) {
+          // Wallet-handshake failures only. Log the ERROR (not console.log — an errors-only
+          // console filter hid these) with the object intact so the stack survives, and read
+          // .message defensively: a non-Error throw used to make .includes() blow up in here.
+          const msg = (e && e.message) ? e.message : String(e);
+          console.error('❌ TronLink connect failed:', e);
+          if (msg.includes('not detected')) {
             console.log('Install TronLink: open your browser’s extension store and search for TronLink.');
-          } else if (e.message.includes('locked') || e.message.includes('not approved')) {
+          } else if (msg.includes('locked') || msg.includes('not approved')) {
             console.log('Please open the TronLink extension, unlock, and approve this site.');
           }
+          return; // never run the page bootstrap on a failed connect
+        }
+
+        // The page's own bootstrap runs OUTSIDE the wallet try/catch. It used to sit inside it,
+        // so any page error (a bad contract read, a BigInt/BigNumber mismatch) was swallowed as
+        // "❌ <msg>" at log level and mistaken for a wallet problem — the page just died quietly
+        // after a successful connect. Now it reports as what it is.
+        try {
+          await callback()
+        } catch (e) {
+          console.error('❌ page init failed AFTER a successful connect:', e);
         }
       });
    

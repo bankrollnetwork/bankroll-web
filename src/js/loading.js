@@ -165,15 +165,35 @@ async function getPrices() {
         }
     }*/    
 
-    bnkr = await getBNKRPrice()
-    bnkrx = await getBNKRXPrice()
-    btt = await getBTTPrice()
-    usdt = await getUSDTPrice()
+    // One guarded, SEQUENTIAL read per source (never Promise.all — these are TronGrid .call()s).
+    // Two things this fixes:
+    //   • A single dead/slow source used to throw straight out of getPrices() and kill main()
+    //     before any UI rendered — the whole page died over one price. Now it degrades.
+    //   • Number() at the boundary normalizes BOTH shapes TronWeb has returned across versions
+    //     (bignumber.js objects on v5, native BigInt on v6). Without it, a BigInt reaches the
+    //     arithmetic below and every later `price / 1e6` throws "Cannot mix BigInt and other types".
+    async function priceOf(label, fn) {
+        try {
+            var v = Number(await fn());
+            if (!isFinite(v)) throw new Error('non-numeric price: ' + String(v));
+            return v;
+        } catch (e) {
+            console.error('price source failed (' + label + '):', e);
+            return null;
+        }
+    }
 
-    result.bnkr = bnkr * usdt;
-    result.bnkrx = bnkrx * usdt;
-    result.btt = btt * usdt;
-    result.usdt = usdt;    
+    bnkr = await priceOf('BNKR', getBNKRPrice)
+    bnkrx = await priceOf('BNKRX', getBNKRXPrice)
+    btt = await priceOf('BTT', getBTTPrice)
+    usdt = await priceOf('USDT', getUSDTPrice)
+
+    // usdt is the common multiplier — without it nothing can be quoted in dollars, so fall back
+    // to 0 rather than emitting NaN, which reads as a broken number all over the UI.
+    result.usdt = usdt || 0;
+    result.bnkr = (bnkr != null && usdt != null) ? bnkr * usdt : 0;
+    result.bnkrx = (bnkrx != null && usdt != null) ? bnkrx * usdt : 0;
+    result.btt = (btt != null && usdt != null) ? btt * usdt : 0;
 
     return result;
 }
