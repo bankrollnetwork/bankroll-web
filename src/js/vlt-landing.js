@@ -87,6 +87,13 @@
     syncChrome();
   }
 
+  // Footer copyright year — stamped at render so it can never go stale in markup. The
+  // span ships with the build year as a fallback for a no-JS load.
+  function initYear() {
+    var y = String(new Date().getFullYear());
+    $("[data-year]").text(y);
+  }
+
   function initReveal() {
     var items = document.querySelectorAll(".reveal");
 
@@ -119,5 +126,6 @@
     initCopy();
     initNav();
     initReveal();
+    initYear();
   });
 })(jQuery);
