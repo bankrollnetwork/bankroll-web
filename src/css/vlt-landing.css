@@ -1469,13 +1469,15 @@ h1 {
   margin-left: auto;
 }
 
+/* Same treatment as the header nav: muted paper-6, brightening to white on hover. */
 .footer-links a {
-  color: var(--white);
+  color: var(--paper-6);
+  font-weight: 900;
   text-decoration: none;
 }
 
 .footer-links a:hover {
-  opacity: 0.7;
+  color: var(--white);
 }
 
 .to-top {
