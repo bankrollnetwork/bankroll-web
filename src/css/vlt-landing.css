@@ -1439,6 +1439,13 @@ h1 {
 
 /* Utility row under the disclaimer: copyright left, menu right. Class selectors so they
    outrank the `.footer-inner p { margin: 0 }` above without !important. */
+/* Dev/fork warning (app page only, toggled by applyChainUI) — tinted so a local fork can
+   never be mistaken for mainnet. */
+.footer-inner .footer-dev {
+  margin-top: 10px;
+  color: #ffeaa7;
+}
+
 .footer-inner .footer-bar {
   display: flex;
   flex-wrap: wrap;

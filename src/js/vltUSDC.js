@@ -2069,10 +2069,12 @@
     if (cfgTab) cfgTab.style.display = state.dev ? "" : "none";
     // Don't leave the now-hidden Config tab selected.
     if (!state.dev && activeLeaf === "config" && activateTab) activateTab("stats");
-    var foot = document.querySelector(".site-footer .footer-inner p");
-    if (foot) foot.textContent = state.dev
-      ? "Internal dev/test tool. Local Hardhat fork only — not for production use."
-      : "vltUSDC · auto-compounding Uniswap V4 liquidity vault. Non-custodial — no admin, no pause.";
+    // The disclaimer paragraph is shared, standardized site copy — don't overwrite it (this
+    // used to replace it wholesale, so the app page carried a tagline where every other page
+    // carried the legal notice). The fork warning gets its own line instead, and it's the only
+    // part that's chain-dependent: visible on a dev fork, hidden on production.
+    var devNote = document.querySelector(".site-footer .footer-dev");
+    if (devNote) devNote.hidden = !state.dev;
   }
 
   // Settings → Advanced: both toggles are opt-in and OFF unless localStorage says otherwise, so the
