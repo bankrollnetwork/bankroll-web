@@ -1814,6 +1814,39 @@
     gateAction("#xfer-go", !!(state.account && state.write.vault && addr.ok && sh.gtn(0) && !over));
     renderPositions();
   }
+
+  // Paste button. Reading the clipboard is privileged: Chrome allows a silent read only once
+  // clipboard-read is GRANTED, Firefox doesn't expose readText() to pages at all, and Safari
+  // requires a user gesture. So when we're allowed to look we look, and the button's enabled
+  // state honestly reflects whether the clipboard holds an address; when we're not allowed, we
+  // leave it enabled and let the CLICK (itself a gesture) do the read. Never poll on a timer —
+  // that would spam permission prompts.
+  async function refreshPasteState() {
+    var btn = document.getElementById("xfer-paste");
+    if (!btn) return;
+    if (!(navigator.clipboard && navigator.clipboard.readText)) { btn.disabled = false; return; }
+    try {
+      var perm = navigator.permissions && await navigator.permissions.query({ name: "clipboard-read" });
+      if (!perm || perm.state !== "granted") { btn.disabled = false; return; } // can't peek — stay clickable
+      var txt = String((await navigator.clipboard.readText()) || "").trim();
+      btn.disabled = !web3.utils.isAddress(txt);
+    } catch (e) { btn.disabled = false; } // unsupported permission name (Firefox) etc.
+  }
+  async function pasteAddress() {
+    try {
+      var txt = String((await navigator.clipboard.readText()) || "").trim();
+      if (!web3.utils.isAddress(txt)) { note("xfer-note", "clipboard doesn't hold a valid address", "vt-warn"); return; }
+      $("#xfer-to").val(txt);
+      xferPreview();            // a single deliberate action — validate now, don't debounce
+      refreshPasteState();
+    } catch (e) {
+      note("xfer-note", "couldn't read the clipboard — paste with " + (navigator.platform.indexOf("Mac") === 0 ? "⌘V" : "Ctrl+V"), "vt-warn");
+    }
+  }
+  // 200ms debounce so validation runs once per pause, not once per keystroke.
+  var _xferTimer;
+  function xferPreviewDebounced() { clearTimeout(_xferTimer); _xferTimer = setTimeout(xferPreview, 200); }
+
   async function doTransfer() {
     try {
       requireConnected();
@@ -2599,9 +2632,14 @@
     $("#don-go").on("click", txGuard("Donate", doZapDonate));
     $("#don-usdc").on("input", syncDonSliderFromUsdc);
     $("#xfer-go").on("click", txGuard("Transfer", doTransfer));
-    $("#xfer-shares").on("input", function () { syncXferSliderFromShares(); xferPreview(); });
+    $("#xfer-shares").on("input", function () { syncXferSliderFromShares(); xferPreviewDebounced(); });
     $("#xfer-slider").on("input", onXferSlider);
-    $("#xfer-to").on("input", xferPreview);
+    $("#xfer-to").on("input", xferPreviewDebounced);
+    $("#xfer-paste").on("click", pasteAddress);
+    // Re-check the clipboard only on real signals — tab focus and opening the panel.
+    $(window).on("focus", refreshPasteState);
+    $('.vt-subtab[data-tab="transfer"]').on("click", refreshPasteState);
+    refreshPasteState();
     $("#don-slider").on("input", onDonSlider);
     $("#red-go").on("click", txGuard("Withdraw", doRedeem));
     $("#cfg-routing-api").on("change", function () {

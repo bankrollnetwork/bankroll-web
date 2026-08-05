@@ -203,6 +203,17 @@
         .vt-bal.is-static { cursor: default; }
         .vt-bal.is-static:hover { opacity: 0.82; text-decoration: none; }
         .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
+        /* Address field with an inline paste affordance sitting inside its right edge. */
+        .vt-input-wrap { position: relative; display: flex; align-items: center; }
+        .vt-input-wrap input { padding-right: 46px; }
+        .vt-paste { position: absolute; right: 6px; display: inline-flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px; padding: 0; border: 0; border-radius: 8px; background: none;
+            color: var(--white); opacity: 0.55; cursor: pointer; }
+        .vt-paste:hover:not(:disabled) { opacity: 1; background: rgba(255,255,255,0.06); }
+        /* Disabled = we looked at the clipboard and it holds no address. Dimmed rather than
+           hidden, so the affordance stays discoverable. */
+        .vt-paste:disabled { opacity: 0.22; cursor: not-allowed; }
+        .vt-paste svg { width: 1.05rem; height: 1.05rem; }
         .vt-hint.vt-bad { color: #ff7675; opacity: 1; }
         .vt-hint.vt-ok { color: #55efc4; opacity: 1; }
         .vt-check { display: inline-flex; align-items: center; gap: 10px; font-weight: 400; font-size: 0.85rem; cursor: pointer; } /* no opacity — holds a token icon */
@@ -962,7 +973,10 @@
                         </div>
                         <div class="vt-row">
                             <label for="xfer-to">To address <span class="vt-hint" data-field="xfer-addr-state"></span></label>
-                            <input id="xfer-to" type="text" value="" placeholder="0x…" spellcheck="false" autocomplete="off" autocapitalize="off">
+                            <div class="vt-input-wrap">
+                                <input id="xfer-to" type="text" value="" placeholder="0x…" spellcheck="false" autocomplete="off" autocapitalize="off">
+                                <button type="button" id="xfer-paste" class="vt-paste" title="Paste address from clipboard" aria-label="Paste address from clipboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></button>
+                            </div>
                         </div>
                         <div class="vt-actions">
                             <button class="button primary" id="xfer-go" type="button" disabled>Transfer</button>
