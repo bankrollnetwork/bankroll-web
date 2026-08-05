@@ -1768,7 +1768,15 @@
   function xferTo() {
     var v = String($("#xfer-to").val() || "").trim();
     if (!v) return { ok: false, empty: true, msg: "" };
-    if (!web3.utils.isAddress(v)) return { ok: false, msg: "not a valid address" };
+    // Still being typed — 0x-prefixed hex that hasn't reached 42 characters. Stay quiet: turning
+    // the field red at "0x74" scolds someone who is simply mid-keystroke, not wrong.
+    if (/^0x?[0-9a-fA-F]*$/.test(v) && v.length < 42) return { ok: false, typing: true, msg: "" };
+    if (!web3.utils.isAddress(v)) {
+      // A full 42-char hex string can only have failed isAddress on the EIP-55 checksum, which
+      // means a mistyped character — worth saying, rather than lumping it in with garbage.
+      if (/^0x[0-9a-fA-F]{40}$/.test(v)) return { ok: false, msg: "checksum doesn't match — check for a typo" };
+      return { ok: false, msg: "not a valid address" };
+    }
     var l = v.toLowerCase();
     if (l === ZERO_ADDR) return { ok: false, msg: "zero address — tokens sent there are burned" };
     if (state.account && l === state.account.toLowerCase()) return { ok: false, msg: "that's this wallet" };
@@ -1781,7 +1789,7 @@
     var el = $f("xfer-addr-state");
     if (el) {
       el.textContent = r.msg;
-      el.className = "vt-hint" + (r.ok ? " vt-ok" : (r.empty ? "" : " vt-bad"));
+      el.className = "vt-hint" + (r.ok ? " vt-ok" : (r.empty || r.typing ? "" : " vt-bad"));
     }
     return r;
   }
