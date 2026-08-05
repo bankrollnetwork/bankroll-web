@@ -203,6 +203,8 @@
         .vt-bal.is-static { cursor: default; }
         .vt-bal.is-static:hover { opacity: 0.82; text-decoration: none; }
         .vt-hint { font-weight: 400; opacity: 0.55; text-transform: none; letter-spacing: 0; }
+        .vt-hint.vt-bad { color: #ff7675; opacity: 1; }
+        .vt-hint.vt-ok { color: #55efc4; opacity: 1; }
         .vt-check { display: inline-flex; align-items: center; gap: 10px; font-weight: 400; font-size: 0.85rem; cursor: pointer; } /* no opacity — holds a token icon */
         /* Themed checkbox: the native control is replaced (appearance:none) with a box wearing
            the same chrome as the amount inputs, and a tick drawn as a data-URI SVG background
@@ -285,6 +287,11 @@
         .calculator-panel .button:disabled,
         .calculator-panel .button[disabled],
         .calculator-panel .button.disabled { display: none; }
+        /* …except Transfer: the hide-when-disabled rule above exists so an approve button can
+           swap places with its action button. Transfer has no partner — hiding it would leave a
+           panel with no button at all — so it greys instead, next to the inline address hint
+           explaining why it's not ready. */
+        .calculator-panel .button#xfer-go:disabled { display: inline-flex; }
         /* Collapse an actions row whose buttons are ALL hidden (e.g. before approvals render) so it leaves
            no gap. Scoped to rows that hold buttons, so checkbox-only .vt-actions are unaffected. */
         .vt-actions:has(> .button):not(:has(> .button:not(:disabled))) { display: none; }
@@ -626,6 +633,7 @@
                 <nav class="vt-subtabs" id="vt-subtabs-vault" hidden aria-label="Vault actions">
                     <button type="button" class="vt-subtab" data-tab="deposit">Deposit</button>
                     <button type="button" class="vt-subtab" data-tab="withdraw">Withdraw</button>
+                    <button type="button" class="vt-subtab" data-tab="transfer">Transfer</button>
                     <button type="button" class="vt-subtab" data-tab="donate">Donate</button>
                     <button type="button" class="vt-subtab" data-tab="advanced">Advanced</button>
                 </nav>
@@ -635,6 +643,7 @@
                     <div class="vt-tab-pane" id="pane-your-stats"></div>
                     <div class="vt-tab-pane" id="pane-deposit"></div>
                     <div class="vt-tab-pane" id="pane-withdraw"></div>
+                    <div class="vt-tab-pane" id="pane-transfer"></div>
                     <div class="vt-tab-pane" id="pane-donate"></div>
                     <div class="vt-tab-pane" id="pane-swap"></div>
                     <div class="vt-tab-pane" id="pane-advanced"></div>
@@ -933,6 +942,32 @@
                             <button class="button primary" id="red-go" type="button">Withdraw</button>
                         </div>
                         <p class="calc-note" data-field="red-note">&nbsp;</p>
+                    </div>
+
+                    <!-- Transfer (ERC-20 transfer of the share token itself) -->
+                    <div class="calculator-panel reveal is-visible">
+                        <div class="panel-heading">
+                            <i class="simple-icon-cursor" aria-hidden="true"></i>
+                            <div><h2>Transfer</h2><p>Send vltUSDC to another wallet — the position moves intact and keeps compounding for the recipient</p></div>
+                        </div>
+                        <div class="vt-row">
+                            <label for="xfer-shares"><span class="vt-lab"><span class="tok-pair"><img class="tok-ic" src="img/logo/coingecko/vlt.png" alt=""><img class="tok-ic" src="img/logo/coingecko/usdc.png" alt=""></span> vltUSDC</span> <span class="vt-bal" data-token="shares" data-target="xfer-shares" title="click to use full balance">…</span></label>
+                            <div class="vt-slip-row" style="margin:2px 0 4px;">
+                                <input type="range" id="xfer-slider" min="0" max="100" step="1" value="0" title="transfer % of your share balance">
+                                <span class="vt-hint" data-field="xfer-pct" style="white-space:nowrap">0%</span>
+                            </div>
+                            <input id="xfer-shares" type="text" value="" placeholder="0.0" inputmode="decimal">
+                            <div class="vt-recv"><span>worth ≈</span> <span data-field="xfer-out"></span></div>
+                            <div class="vt-position" data-field="xfer-position"></div>
+                        </div>
+                        <div class="vt-row">
+                            <label for="xfer-to">To address <span class="vt-hint" data-field="xfer-addr-state"></span></label>
+                            <input id="xfer-to" type="text" value="" placeholder="0x…" spellcheck="false" autocomplete="off" autocapitalize="off">
+                        </div>
+                        <div class="vt-actions">
+                            <button class="button primary" id="xfer-go" type="button" disabled>Transfer</button>
+                        </div>
+                        <p class="calc-note" data-field="xfer-note">&nbsp;</p>
                     </div>
 
                 </div>

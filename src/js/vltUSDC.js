@@ -457,6 +457,7 @@
     setField("share-pct", supN > 0 ? (pct >= 0.01 || pct === 0 ? pct.toFixed(2) : Number(pct.toPrecision(2))) + "%" : "—");
     renderWalletModal(); // keep the wallet browser current with balances/prices as they land
     renderPositions();   // ditto the Deposit/Withdraw "your position" lines
+    xferPreview();       // and re-gate Transfer against the new balance
   }
 
   // ── wallet modal ("wallet browser": ETH / VLT / USDC / vltUSDC + ≈$ total) ──
@@ -1103,6 +1104,14 @@
       if (sh.gtn(0)) red = "-" + sh.toString();   // a withdraw shrinks the position
     } catch (e) {}
     renderPosition("red-position", red);
+    var xfer = "0";
+    try {
+      var xs = toBN(parseUnits($("#xfer-shares").val(), state.tokens.sharesDec));
+      var have = toBN(balRaw("shares"));
+      if (xs.gt(have)) xs = have;
+      if (xs.gtn(0)) xfer = "-" + xs.toString();
+    } catch (e) {}
+    renderPosition("xfer-position", xfer);
   }
 
   function estSharesFromUsd(effUsd) {
@@ -1161,6 +1170,7 @@
     else if (target === "dep-usdc") onDepInput("usdc", true);
     else if (target === "zap-usdc") onZapTotal(true);
     else if (target === "don-usdc") syncDonSliderFromUsdc();
+    else if (target === "xfer-shares") { syncXferSliderFromShares(); xferPreview(); }
     else if (target === "red-shares") { syncRedeemSliderFromShares(); redeemPreview(); }
   }
 
@@ -1747,6 +1757,78 @@
     renderDonReadout();
   }
 
+
+  // ── transfer (plain ERC-20 move of the share token) ─────────────────────────
+  // No approval and no vault call: vltUSDC is a standard ERC-20, so this is transfer(to, amount)
+  // on the vault itself. The position moves intact — the recipient's shares keep compounding.
+  var ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+  // Validate the destination. web3.utils.isAddress() also rejects a MIXED-CASE address whose
+  // EIP-55 checksum doesn't match, which is what catches a mistyped character; an all-lower or
+  // all-upper address has no checksum to verify, so it passes on format alone.
+  function xferTo() {
+    var v = String($("#xfer-to").val() || "").trim();
+    if (!v) return { ok: false, empty: true, msg: "" };
+    if (!web3.utils.isAddress(v)) return { ok: false, msg: "not a valid address" };
+    var l = v.toLowerCase();
+    if (l === ZERO_ADDR) return { ok: false, msg: "zero address — tokens sent there are burned" };
+    if (state.account && l === state.account.toLowerCase()) return { ok: false, msg: "that's this wallet" };
+    if (state.cfg.vault && l === state.cfg.vault.toLowerCase()) return { ok: false, msg: "that's the vault — shares sent there are stranded" };
+    if (state.cfg.zap && l === state.cfg.zap.toLowerCase()) return { ok: false, msg: "that's the ZapHelper — shares sent there are stranded" };
+    return { ok: true, addr: v, msg: "valid" };
+  }
+  function renderXferAddr() {
+    var r = xferTo();
+    var el = $f("xfer-addr-state");
+    if (el) {
+      el.textContent = r.msg;
+      el.className = "vt-hint" + (r.ok ? " vt-ok" : (r.empty ? "" : " vt-bad"));
+    }
+    return r;
+  }
+  function renderXferReadout() {
+    paintRange(document.getElementById("xfer-slider"));
+    setField("xfer-pct", ($("#xfer-slider").val() || "0") + "%");
+  }
+  function onXferSlider() {
+    var pct = parseInt($("#xfer-slider").val(), 10) || 0;
+    $("#xfer-shares").val(formatUnits(toBN(balRaw("shares")).muln(pct).divn(100).toString(), state.tokens.sharesDec, state.tokens.sharesDec));
+    renderXferReadout();
+    xferPreview();
+  }
+  function syncXferSliderFromShares() {
+    var bal = toBN(balRaw("shares"));
+    var sh; try { sh = toBN(parseUnits($("#xfer-shares").val(), state.tokens.sharesDec)); } catch (e) { sh = toBN("0"); }
+    $("#xfer-slider").val(bal.gtn(0) ? Math.min(100, Number(sh.muln(100).div(bal).toString())) : 0);
+    renderXferReadout();
+  }
+  // Dollar value of what's being sent + the resulting position, then gate the button.
+  function xferPreview() {
+    var raw = "0";
+    try { raw = parseUnits($("#xfer-shares").val(), state.tokens.sharesDec); } catch (e) {}
+    var sh = toBN(raw);
+    var usd = Number(sh.toString()) * (state.navPerShareUsdc || 0);
+    setFieldHtml("xfer-out", sh.gtn(0) ? compact(sh.toString()) + " " + sharesHtml() + (usd > 0 ? " ≈ $" + localize(usd.toFixed(2)) : "") : "");
+    var addr = renderXferAddr();
+    var over = sh.gt(toBN(balRaw("shares")));
+    note("xfer-note", over ? "amount exceeds your vltUSDC balance" : " ", over ? "vt-warn" : "");
+    gateAction("#xfer-go", !!(state.account && state.write.vault && addr.ok && sh.gtn(0) && !over));
+    renderPositions();
+  }
+  async function doTransfer() {
+    try {
+      requireConnected();
+      var addr = xferTo();
+      if (!addr.ok) throw new Error(addr.empty ? "enter a destination address" : addr.msg);
+      var raw = parseUnits($("#xfer-shares").val(), state.tokens.sharesDec);
+      if (toBN(raw).lten(0)) throw new Error("enter an amount");
+      if (toBN(raw).gt(toBN(balRaw("shares")))) throw new Error("amount exceeds your vltUSDC balance");
+      await runTx("transfer " + compact(raw) + " vltUSDC → " + short(addr.addr),
+        state.write.vault.methods.transfer(addr.addr, raw).send({ from: state.account }));
+      $("#xfer-shares").val(""); $("#xfer-to").val("");   // sent — clear both inputs
+      syncXferSliderFromShares(); xferPreview();
+    } catch (e) { note("xfer-note", errText(e), "vt-warn"); }
+  }
+
   var _redTimer;
   function redeemPreviewDebounced() { clearTimeout(_redTimer); _redTimer = setTimeout(redeemPreview, 350); }
   // Redeem amount slider (% of share balance) + live "X%" readout (the $ value lives on the
@@ -2118,7 +2200,7 @@
   var TAB_GROUPS = {
     stats: ["vlt", "stats", "your-stats"],
     swap: ["swap"],
-    vault: ["deposit", "withdraw", "donate", "advanced"],
+    vault: ["deposit", "withdraw", "transfer", "donate", "advanced"],
     config: ["config"],
   };
   var activeLeaf = null;  // current leaf (the apply* helpers' don't-strand checks read this)
@@ -2134,6 +2216,7 @@
       "pane-your-stats": ["your-stats"],
       "pane-deposit": ["zap-go"],
       "pane-withdraw": ["red-go"],
+      "pane-transfer": ["xfer-go"],
       "pane-donate": ["don-go"],
       "pane-swap": ["swap-panel"],
       "pane-advanced": ["dep-go"],
@@ -2515,6 +2598,10 @@
     $("#zap-go").on("click", txGuard("Deposit", doZapDeposit));
     $("#don-go").on("click", txGuard("Donate", doZapDonate));
     $("#don-usdc").on("input", syncDonSliderFromUsdc);
+    $("#xfer-go").on("click", txGuard("Transfer", doTransfer));
+    $("#xfer-shares").on("input", function () { syncXferSliderFromShares(); xferPreview(); });
+    $("#xfer-slider").on("input", onXferSlider);
+    $("#xfer-to").on("input", xferPreview);
     $("#don-slider").on("input", onDonSlider);
     $("#red-go").on("click", txGuard("Withdraw", doRedeem));
     $("#cfg-routing-api").on("change", function () {
