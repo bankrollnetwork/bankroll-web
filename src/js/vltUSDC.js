@@ -1533,14 +1533,57 @@
         .then(function () { txBusy = false; txPendingEnd(); });
     };
   }
+  // Independent receipt watch, raced against web3's own polling. web3 polls
+  // eth_getTransactionReceipt through the WALLET's provider, which fails us twice over:
+  //   • it asks the wallet's node, which can lag well behind the node the user is watching on
+  //     Etherscan — the tx is mined, the app is still "waiting";
+  //   • that poll is setTimeout-based, and browsers throttle timers to ~1/minute in a hidden
+  //     tab — which is exactly where you go to check the explorer.
+  // So we watch the same hash on the app's OWN http RPC (state.httpWeb3, deliberately not
+  // readWeb3 — once connected that IS the wallet) and wake instantly when the tab regains
+  // focus. Whichever source answers first settles the modal.
+  function watchReceipt(hash) {
+    return new Promise(function (resolve, reject) {
+      var done = false, timer = null;
+      function stop() { done = true; clearTimeout(timer); document.removeEventListener("visibilitychange", onVis); }
+      function tick() {
+        if (done) return;
+        clearTimeout(timer);
+        var w3 = state.httpWeb3 || state.readWeb3 || window.web3;
+        if (!w3) { timer = setTimeout(tick, 5000); return; }
+        w3.eth.getTransactionReceipt(hash).then(function (r) {
+          if (done) return;
+          if (!r) { timer = setTimeout(tick, 4000); return; }
+          stop();
+          // Mirror web3's contract: a reverted tx rejects rather than resolving.
+          if (r.status === false || r.status === "0x0" || r.status === 0) reject(new Error("transaction reverted"));
+          else resolve(r);
+        }).catch(function () { if (!done) timer = setTimeout(tick, 6000); }); // node hiccup — keep trying
+      }
+      function onVis() { if (document.visibilityState === "visible") tick(); }
+      document.addEventListener("visibilitychange", onVis);
+      tick();
+    });
+  }
+
   async function runTx(label, sendPromise) {
     var entry = logEntry(label + " — pending…", "pending");
-    // Pending-modal phase 2: once the wallet signs (hash known), show "waiting for confirmation".
+    // Pending-modal phase 2: once the wallet signs (hash known), show "waiting for confirmation"
+    // and start our own receipt watch alongside web3's (see watchReceipt for why).
+    // Deferred that adopts our own receipt watch once the hash exists. Resolving a promise WITH
+    // a promise adopts its state, so `ours` simply stays pending until watchReceipt settles —
+    // no polling loop needed to bridge the two.
+    var startOurs, ours = new Promise(function (r) { startOurs = r; });
     if (sendPromise && typeof sendPromise.on === "function") {
-      try { sendPromise.on("transactionHash", txPendingMining); } catch (e) {}
+      try {
+        sendPromise.on("transactionHash", function (h) { txPendingMining(h); startOurs(watchReceipt(h)); });
+      } catch (e) {}
     }
     try {
-      var rec = await sendPromise;
+      // Whichever source sees the receipt first wins. Silence the loser so a late rejection
+      // can't surface as an unhandled promise error after the modal has already settled.
+      sendPromise.catch(function () {});
+      var rec = await Promise.race([sendPromise, ours]);
       entry.className = "entry ok";
       entry.textContent = "[" + new Date().toLocaleTimeString() + "] " + label + " — OK  tx " + (rec.transactionHash || rec);
       showTxResult(label, rec);
