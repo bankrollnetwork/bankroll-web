@@ -557,7 +557,11 @@
     var ethPerVlt = (v2Vlt && v2Weth) ? v2Weth / v2Vlt : null;
     var v2Price = (ethPerVlt != null && eth) ? ethPerVlt * eth : null;
     if (spot || v2Price != null) {
-      setField("g-vlt-venue", "V4 " + (spot ? fmtSpot(spot) : "—") + " | V2 " + (v2Price != null ? fmtSpot(v2Price) : "—"));
+      // setFieldHtml, not setField — the unit carries the token badge. Both venues quote the
+      // same unit, so it's stated once at the end rather than repeated per price (unlike the
+      // Pool/fees cards, where the two halves are genuinely different tokens).
+      setFieldHtml("g-vlt-venue", "V4 " + (spot ? fmtSpot(spot) : "—") +
+        " | V2 " + (v2Price != null ? fmtSpot(v2Price) : "—") + " / " + tokHtml("VLT"));
     } else { setField("g-vlt-venue", "—"); }
     setFieldHtml("g-vlt-eth", ethPerVlt != null ? Number(ethPerVlt.toPrecision(3)) + " " + tokHtml("ETH") + " / " + tokHtml("VLT") : "—");
   }
