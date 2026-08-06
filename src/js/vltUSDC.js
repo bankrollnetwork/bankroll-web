@@ -551,13 +551,14 @@
     setField("g-vlt-liq-pct", (poolVlt != null || v2Vlt != null) && supply ? (liqVlt / supply * 100).toFixed(2) + "%" : "—");
     setField("g-vlt-vault-pct", (poolVlt != null && supply) ? (poolVlt / supply * 100).toFixed(2) + "%" : "—");
     setFieldHtml("g-vlt-vault-amt", poolVlt != null ? localize(poolVlt.toFixed(0)) + " " + tokHtml("VLT") : "");
-    // V2 venue price (WETH/VLT at live ETH spot) + spread vs V4; VLT in ETH terms.
+    // Venue prices, both absolute: V4 is the vault's own pool, V2 the legacy WETH/VLT pair
+    // marked at the live ETH spot. Same "V4 … | V2 …" shape as the liquidity card above, so the
+    // two read together — a reader can see the gap without a percentage doing it for them.
     var ethPerVlt = (v2Vlt && v2Weth) ? v2Weth / v2Vlt : null;
-    if (ethPerVlt != null && eth) {
-      var v2Price = ethPerVlt * eth;
-      setFieldHtml("g-vlt-v2", fmtSpot(v2Price) + " / " + tokHtml("VLT"));
-      setField("g-vlt-spread", spot ? ((v2Price - spot) / spot * 100).toFixed(2) + "% vs V4" : "");
-    } else { setField("g-vlt-v2", "—"); setField("g-vlt-spread", ""); }
+    var v2Price = (ethPerVlt != null && eth) ? ethPerVlt * eth : null;
+    if (spot || v2Price != null) {
+      setField("g-vlt-venue", "V4 " + (spot ? fmtSpot(spot) : "—") + " | V2 " + (v2Price != null ? fmtSpot(v2Price) : "—"));
+    } else { setField("g-vlt-venue", "—"); }
     setFieldHtml("g-vlt-eth", ethPerVlt != null ? Number(ethPerVlt.toPrecision(3)) + " " + tokHtml("ETH") + " / " + tokHtml("VLT") : "—");
   }
 
