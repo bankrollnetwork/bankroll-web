@@ -137,6 +137,14 @@
         /* .result-grid span/.status-card span force block in the theme — outrank them so the
            badge stays in the line it decorates. */
         span.tok-pair, .result-grid span.tok-pair, .status-card span.tok-pair { display: inline; white-space: nowrap; }
+        /* The theme's label rule (.result-grid span → block, uppercase, muted, 0.82rem) matches
+           ANY span in a card, including one nested inside a VALUE. That turned the vltUSDC
+           contract address into an uppercased block that pushed its copy/explorer icons onto a
+           second line. Reset spans that live inside a value so they read as part of it. */
+        .result-grid strong span, .vt-cards .vt-kv strong span {
+            display: inline; color: inherit; font-size: inherit; font-weight: inherit;
+            text-transform: none; letter-spacing: normal;
+        }
         .tok-pair .tok-ic:first-child { position: relative; z-index: 1; }
         .tok-pair .tok-ic + .tok-ic { margin-left: -7px; }
         /* Large badge for headings (the pre-connect hero title): em-sized so it tracks the
@@ -708,6 +716,8 @@
                             <div class="vt-kv"><span>claimable (fees + retained)</span><strong data-field="vs-claimable" class="vt-loading"></strong></div>
                             <div class="vt-kv"><span>auto-compound trigger</span><strong data-field="vs-trigger" class="vt-loading"></strong></div>
                             <div class="vt-kv"><span>lifetime fees</span><strong data-field="vs-fees" class="vt-loading"></strong></div>
+                            <div class="vt-kv"><span>contract</span><strong><span data-field="vs-contract">0xee8d…0A7f</span><button type="button" class="vt-wallet-act" data-act="copy" id="vs-copy" data-addr="0xee8d4c5c768AadCd3517Aa8C908De300305D0A7f" title="Copy vltUSDC contract address" aria-label="Copy vltUSDC contract address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><a class="vt-wallet-act" id="vs-explore" href="https://etherscan.io/token/0xee8d4c5c768AadCd3517Aa8C908De300305D0A7f" target="_blank" rel="noopener" title="View vltUSDC on Etherscan" aria-label="View vltUSDC on Etherscan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></strong></div>
+                            <div class="vt-kv"><span>live since</span><strong>2026 · Ethereum</strong></div>
                         </div>
                         <p class="calc-note">L per share is liquidity-denominated, not USD.</p>
                     </div>

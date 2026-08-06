@@ -318,6 +318,7 @@
 
   // ── dashboard (read-only) ──────────────────────────────────────────────────
   async function refreshDashboard() {
+    renderVaultIdentity(); // cheap, and the address is known before any read resolves
     if (!state.read.vault) { note("dep-note", "Set the vault address in Config.", "vt-warn"); return; }
     try {
       var v = state.read.vault.methods;
@@ -529,6 +530,23 @@
     }
     renderVltStats();
   }
+  // Keep the vltUSDC contract card honest. VLT's equivalent can hardcode its address — it's the
+  // same token on mainnet and on a fork of it — but the VAULT is deployed per chain, so a dev
+  // fork has its own. Sync from state.cfg.vault and drop the explorer link off mainnet, where
+  // it would point at a contract the explorer has never seen.
+  function renderVaultIdentity() {
+    var v = state.cfg.vault;
+    if (!v) return;
+    setField("vs-contract", short(v));
+    var cp = document.getElementById("vs-copy");
+    if (cp) cp.setAttribute("data-addr", v);
+    var ex = document.getElementById("vs-explore");
+    if (ex) {
+      ex.href = "https://etherscan.io/token/" + v;
+      ex.style.display = state.dev ? "none" : "";
+    }
+  }
+
   function renderVltStats() {
     var spot = state.priceUsdcPerVlt || 0;
     var vltDec = state.tokens.vltDec || 18;
